@@ -1,6 +1,6 @@
 import threading
 import time
-from settings import load_settings
+from src.settings import load_settings
 
 try:
     import RPi.GPIO as GPIO
@@ -9,11 +9,11 @@ try:
 except:
     GPIO = None
 
-from components.ds1 import run_ds1
-from components.dpir1 import run_dpir1
-from components.dms import run_dms
-from components.dus1 import run_dus1
-from components.cli import run_cli
+from src.components.ds1 import run_ds1
+from src.components.dpir1 import run_dpir1
+from src.components.dms import run_dms
+from src.components.dus1 import run_dus1
+from src.components.cli import run_cli
 
 
 if __name__ == "__main__":
