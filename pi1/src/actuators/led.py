@@ -23,3 +23,7 @@ class Led:
     def toggle(self):
         if GPIO is None: return
         GPIO.output(self.pin, not GPIO.input(self.pin))
+
+
+    def state(self) -> bool:
+        return self._state if GPIO is None else bool(GPIO.input(self.pin))

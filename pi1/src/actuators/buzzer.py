@@ -32,3 +32,6 @@ class Buzzer:
             time.sleep(float(duration))
             self.off()
             time.sleep(float(duration))
+
+    def state(self) -> bool:
+        return self._on
