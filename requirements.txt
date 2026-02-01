@@ -1,2 +1,5 @@
 RPi.GPIO; platform_machine=="armv7l" or platform_machine=="aarch64"
 paho-mqtt==2.1.0
+Flask==3.0.3
+influxdb-client==1.45.0
+python-dotenv==1.0.1

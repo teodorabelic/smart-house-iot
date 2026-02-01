@@ -13,7 +13,7 @@ class ActuatorController:
 
         c0 = parts[0].lower()
 
-        # ===== DOOR LIGHT =====
+        #door light
         if c0 == "dl":
             if len(parts) < 2:
                 print("Usage: dl on|off|toggle")
@@ -27,7 +27,7 @@ class ActuatorController:
             print(f"DL -> {action}")
             return
 
-        # ===== DOOR BUZZER =====
+        #door buzzer
         if c0 == "db":
             if len(parts) < 2:
                 print("Usage: db on|off|beep")
@@ -51,17 +51,18 @@ class ActuatorController:
     def handle(self, topic, payload):
         action = payload.get("action")
 
-        # ovde ide GPIO ili simulacija
         print(f"ACTUATOR EXECUTED: {topic} -> {action}")
 
-        # ⛔ NIKAD ne publishuj ponovo na /set
+        # Publish state update
         state_topic = topic.replace("/set", "/state")
 
         self.mqtt.publish_json(
             state_topic,
             {
-                "status": action,
-                "pi": self.pi_id
+                "pi_id": self.pi_id,
+                "code": topic.split("/")[-2],
+                "state": action
             },
             qos=self.qos
         )
+

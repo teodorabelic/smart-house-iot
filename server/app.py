@@ -11,7 +11,7 @@ load_dotenv()
 INFLUX_URL = os.getenv("INFLUX_URL", "http://localhost:8086")
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN", "")
 INFLUX_ORG = os.getenv("INFLUX_ORG", "iot")
-INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "smarthome")
+INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "iot_bucket")
 
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
@@ -48,8 +48,10 @@ def write_sensor_to_influx(data: dict):
 
     point = point.time(dt, WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+    print("WROTE TO INFLUX:", point.to_line_protocol())
 
 def write_actuator_to_influx(data: dict):
+    print("WRITING ACTUATOR:", data)
     point = (
         Point("actuator_events")
         .tag("pi_id", str(data.get("pi_id", "")))
@@ -70,6 +72,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         print("MQTT connection failed:", reason_code)
 
 def on_message(client, userdata, msg):
+    print("SERVER GOT:", msg.topic, msg.payload)
     try:
         payload = json.loads(msg.payload.decode("utf-8"))
     except Exception:
@@ -116,4 +119,4 @@ def actuator(code: str):
     return jsonify({"published": True, "topic": topic, "payload": data})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5050, debug=False)
