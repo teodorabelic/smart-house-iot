@@ -1,5 +1,4 @@
 import threading
-import time
 from datetime import datetime
 from simulators.binary import run_binary_simulator
 from sensors.button import run_button_loop, ButtonSensor

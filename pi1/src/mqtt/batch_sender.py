@@ -31,7 +31,7 @@ class BatchSender:
     def enqueue(self, item: Dict[str, Any]):
         topic = item.get("_topic", "")
         if "/actuators/" in topic:
-            return  # ignoriši aktuatore
+            return
         self.q.put(item)
 
     def _flush(self, batch: List[Dict[str, Any]]):

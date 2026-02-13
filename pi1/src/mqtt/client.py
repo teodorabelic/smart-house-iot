@@ -15,11 +15,9 @@ class MqttClient:
         self.client.connect(self.host, self.port, keepalive=60)
         self.client.loop_start()
 
-    # ===== STANDARDNI MQTT INTERFEJS (ZA CONTROLLER) =====
     def publish(self, topic: str, payload: dict, qos: int = 1, retain: bool = False):
         self.publish_json(topic, payload, qos=qos, retain=retain)
 
-    # ===== POSTOJEĆA METODA =====
     def publish_json(self, topic: str, payload: dict, qos: int = 1, retain: bool = False):
         self.client.publish(
             topic,

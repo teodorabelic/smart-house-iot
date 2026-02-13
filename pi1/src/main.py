@@ -20,10 +20,12 @@ from components.cli import run_cli
 from components.actuator_listener import ActuatorController
 
 def main():
+    # ucitavanje konfiguracije
     settings = load_settings("settings.json")
     pi_id = settings["pi"]["pi_id"]
     device_name = settings["pi"]["device_name"]
 
+    # pokretanje MQTT klijenta
     mqtt_cfg = settings["mqtt"]
     base_topic = mqtt_cfg.get("base_topic", "smarthome")
     qos = int(mqtt_cfg.get("qos", 1))
@@ -31,6 +33,7 @@ def main():
     mqtt = MqttClient(mqtt_cfg["host"], int(mqtt_cfg["port"]), client_id=f"{pi_id}-{device_name}")
     mqtt.connect()
 
+    # startovanje batch daemon
     batch_cfg = settings.get("batch", {})
     batch_sender = BatchSender(
         mqtt_client=mqtt,
@@ -42,6 +45,7 @@ def main():
 
     ctx = {"pi_id": pi_id, "device_name": device_name, "base_topic": base_topic, "batch_sender": batch_sender}
 
+    # podizanje niti
     stop_event = threading.Event()
     threads = []
 
