@@ -27,5 +27,4 @@ Commands:
             stop_event.set()
             break
 
-        # 👇 SVE IDE KROZ CONTROLLER
         controller.handle_command(cmd)

@@ -11,7 +11,7 @@ Commands:
 
     while not stop_event.is_set():
         try:
-            cmd = input("PI1> ").strip()
+            cmd = input("PI3> ").strip()
         except (EOFError, KeyboardInterrupt):
             stop_event.set()
             break
@@ -27,5 +27,4 @@ Commands:
             stop_event.set()
             break
 
-        # 👇 SVE IDE KROZ CONTROLLER
         controller.handle_command(cmd)
