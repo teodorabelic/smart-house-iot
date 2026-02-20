@@ -24,6 +24,7 @@ class Led:
         if GPIO is None: return
         GPIO.output(self.pin, not GPIO.input(self.pin))
 
-
     def state(self) -> bool:
-        return self._state if GPIO is None else bool(GPIO.input(self.pin))
+        if GPIO is None:
+            return False
+        return bool(GPIO.input(self.pin))

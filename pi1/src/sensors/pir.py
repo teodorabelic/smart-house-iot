@@ -13,6 +13,7 @@ class PirSensor:
         if GPIO is None:
             return
         GPIO.setup(self.pin, GPIO.IN)
+        time.sleep(2)
 
     def read_motion(self) -> bool:
         if GPIO is None:
@@ -21,6 +22,13 @@ class PirSensor:
 
 def run_pir_loop(sensor: PirSensor, interval_sec, callback, stop_event, code):
     sensor.setup()
+    last_state = None
+
     while not stop_event.is_set():
-        callback(sensor.read_motion(), code)
+        current = sensor.read_motion()
+
+        if current != last_state:
+            callback(current, code)
+            last_state = current
+
         time.sleep(interval_sec)

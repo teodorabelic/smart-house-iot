@@ -14,7 +14,7 @@
     "flush_interval_sec": 2.0
   },
   "DS1": {
-    "simulated": false,
+    "simulated": true,
     "pin": 17,
     "pull": "UP",
     "interval": 0.05
@@ -25,8 +25,8 @@
     "interval": 1
   },
   "DMS": {
-    "simulated": true,
-    "pin": 22,
+    "simulated": false,
+    "pin": 21,
     "pull": "UP",
     "interval": 1
   },

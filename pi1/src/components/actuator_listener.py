@@ -1,10 +1,12 @@
 class ActuatorController:
-    def __init__(self, settings, pi_id, base_topic, mqtt, qos=1):
+    def __init__(self, settings, pi_id, base_topic, mqtt, qos=1, led=None, buzzer=None):
         self.settings = settings
         self.pi_id = pi_id
         self.base_topic = base_topic
         self.mqtt = mqtt
         self.qos = qos
+        self.led = led
+        self.buzzer = buzzer
 
     def handle_command(self, cmd: str):
         parts = cmd.split()
@@ -50,6 +52,27 @@ class ActuatorController:
 
     def handle(self, topic, payload):
         action = payload.get("action")
+
+        # ---- REAL LED CONTROL ----
+        if topic.endswith("/DL/set") and self.led is not None:
+            if action == "on":
+                self.led.on()
+            elif action == "off":
+                self.led.off()
+            elif action == "toggle":
+                self.led.toggle()
+
+        # ---- REAL BUZZER CONTROL ----
+        if topic.endswith("/DB/set") and self.buzzer is not None:
+            if action == "on":
+                self.buzzer.on()
+            elif action == "off":
+                self.buzzer.off()
+            elif action == "beep":
+                n = payload.get("n", 1)
+                duration = payload.get("duration", 0.2)
+                pitch = payload.get("pitch", 440)
+                self.buzzer.beep(n=n, duration=duration, pitch=pitch)
 
         print(f"ACTUATOR EXECUTED: {topic} -> {action}")
 

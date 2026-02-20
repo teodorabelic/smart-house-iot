@@ -16,6 +16,8 @@ from components.dms import run_dms
 from components.dus1 import run_dus1
 from components.webc import run_webc
 from components.cli import run_cli
+from actuators.led import Led
+from actuators.buzzer import Buzzer
 from components.actuator_listener import ActuatorController
 
 
@@ -43,18 +45,30 @@ def main():
     stop_event = threading.Event()
     threads = []
 
-    if 'DS1' in settings:
-        run_ds1(settings['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    if 'DPIR1' in settings:
-        run_dpir1(settings['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
+    # if 'DS1' in settings:
+    #     run_ds1(settings['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    # if 'DPIR1' in settings:
+    #     run_dpir1(settings['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
     if 'DMS' in settings:
         run_dms(settings['DMS'], threads, stop_event, batch_sender, pi_id, device_name)
-    if 'DUS1' in settings:
-        run_dus1(settings['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    if 'WEBC' in settings:
-        run_webc(settings['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
+    # if 'DUS1' in settings:
+    #     run_dus1(settings['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    # if 'WEBC' in settings:
+    #     run_webc(settings['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
 
-    controller = ActuatorController(settings, pi_id=pi_id, base_topic=base_topic, mqtt=mqtt, qos=qos)
+    #LED
+    led = None
+    if 'DL' in settings and not settings['DL'].get('simulated', True):
+        led = Led(settings['DL']['pin'])
+        led.setup()
+
+    #BUZEER
+    buzzer = None
+    if 'DB' in settings and not settings['DB'].get('simulated', True):
+        buzzer = Buzzer(settings['DB']['pin'])
+        buzzer.setup()
+
+    controller = ActuatorController(settings, pi_id=pi_id, base_topic=base_topic, mqtt=mqtt, qos=qos, led=led, buzzer=buzzer)
     mqtt.subscribe_json(f'{base_topic}/{pi_id}/actuators/+/set', controller.handle, qos=qos)
 
     try:

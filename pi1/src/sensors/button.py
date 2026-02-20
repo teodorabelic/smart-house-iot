@@ -32,6 +32,14 @@ class ButtonSensor:
 
 def run_button_loop(sensor: ButtonSensor, interval_sec, callback, stop_event, code):
     sensor.setup()
+    last_state = None
+
     while not stop_event.is_set():
-        callback(sensor.read_pressed(), code)
+        current = sensor.read_pressed()
+
+        if current != last_state:
+            callback(current, code)
+            last_state = current
+
         time.sleep(interval_sec)
+
