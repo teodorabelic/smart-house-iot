@@ -1,49 +1,46 @@
 import threading
 from datetime import datetime
-from simulators.binary import run_binary_simulator
-from sensors.button import run_button_loop, ButtonSensor
+from sensors.keypad import KeypadSensor, run_keypad_loop
 
-
-def dms_callback(value, code, batch_sender, pi_id, device_name):
+def dms_callback(key, code, batch_sender, pi_id, device_name):
     t = datetime.utcnow().isoformat()
 
     print("=" * 20)
     print(f"Timestamp: {t}")
     print(f"Code: {code}")
-    print(f"Pressed: {value}")
+    print(f"Key pressed: {key}")
 
     batch_sender.enqueue({
         "_topic": f"smarthome/{pi_id}/sensors/{code}",
         "pi_id": pi_id,
         "device_name": device_name,
         "code": code,
-        "value": bool(value),
+        "key": key,
         "ts": t
     })
 
 
 def run_dms(settings, threads, stop_event, batch_sender, pi_id, device_name):
-    interval = settings.get("interval", 1)
+    interval = settings.get("interval", 0.1)
     simulated = settings.get("simulated", True)
 
-    cb = lambda v, c: dms_callback(v, c, batch_sender, pi_id, device_name)
-
     if simulated:
-        print("Starting DMS simulator")
-        th = threading.Thread(
-            target=run_binary_simulator,
-            args=(interval, cb, stop_event, "DMS", 0.08),
-            daemon=True
-        )
-    else:
-        print("Starting DMS real loop")
-        sensor = ButtonSensor(settings["pin"], pull=settings.get("pull", "UP"))
-        th = threading.Thread(
-            target=run_button_loop,
-            args=(sensor, interval, cb, stop_event, "DMS"),
-            daemon=True
-        )
+        print("Keypad simulation not implemented")
+        return
+
+    print("Starting Keypad real loop")
+
+    sensor = KeypadSensor(settings["rows"], settings["cols"])
+
+    cb = lambda key, code: dms_callback(
+        key, code, batch_sender, pi_id, device_name
+    )
+
+    th = threading.Thread(
+        target=run_keypad_loop,
+        args=(sensor, interval, cb, stop_event, "DMS"),
+        daemon=True
+    )
 
     th.start()
     threads.append(th)
-

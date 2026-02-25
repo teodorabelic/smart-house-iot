@@ -25,10 +25,10 @@
     "interval": 1
   },
   "DMS": {
-    "simulated": false,
-    "pin": 21,
-    "pull": "UP",
-    "interval": 1
+  "simulated": false,
+  "rows": [25,8,7,1],
+  "cols": [12,16,20,21],
+  "interval": 0.1
   },
   "DUS1": {
     "simulated": true,

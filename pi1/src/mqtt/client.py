@@ -7,7 +7,7 @@ class MqttClient:
         self.host = host
         self.port = port
         self.client = mqtt.Client(
-            mqtt.CallbackAPIVersion.VERSION2,
+            # mqtt.CallbackAPIVersion.VERSION2,
             client_id=client_id
         )
 
