@@ -1,20 +1,64 @@
 {
-  "device": {"name": "pi3", "pi_number": 3, "location": "living_room_bedrooms"},
+  "device": {
+    "name": "PI3",
+    "pi_number": 3,
+    "location": "living_room_bedrooms"
+  },
   "mqtt": {
     "broker": "localhost",
     "port": 1883,
     "topics": {
       "sensor_data": "smart_home/pi3/sensors/data",
       "actuator_command": "smart_home/pi3/actuators/command"
-    }
+    },
+    "host": "localhost",
+    "base_topic": "smarthome"
   },
   "components": {
-    "DHT1": {"type": "dht11", "pin": 4, "simulate": false, "read_interval": 5},
-    "DHT2": {"type": "dht11", "pin": 17, "simulate": true, "read_interval": 5},
-    "IR": {"type": "ir_receiver", "pin": 18, "simulate": true, "interval": 1},
-    "BRGB": {"type": "rgb_led", "pins": {"red": 22, "green": 27, "blue": 10}, "simulate": true},
-    "LCD": {"type": "i2c_lcd", "i2c_address": "0x27", "cols": 16, "rows": 2, "simulate": true, "rotation_interval": 5},
-    "DPIR3": {"type": "pir", "pin": 23, "simulate": true, "interval": 1}
+    "DHT1": {
+      "type": "dht11",
+      "pin": 4,
+      "simulate": false,
+      "read_interval": 5
+    },
+    "DHT2": {
+      "type": "dht11",
+      "pin": 17,
+      "simulate": true,
+      "read_interval": 5
+    },
+    "IR": {
+      "type": "ir_receiver",
+      "pin": 18,
+      "simulate": true,
+      "interval": 1
+    },
+    "BRGB": {
+      "type": "rgb_led",
+      "pins": {
+        "red": 22,
+        "green": 27,
+        "blue": 10
+      },
+      "simulate": true
+    },
+    "LCD": {
+      "type": "i2c_lcd",
+      "i2c_address": "0x27",
+      "cols": 16,
+      "rows": 2,
+      "simulate": true,
+      "rotation_interval": 5
+    },
+    "DPIR3": {
+      "type": "pir",
+      "pin": 23,
+      "simulate": true,
+      "interval": 1
+    }
   },
-  "batch_sender": {"interval": 10, "max_batch_size": 50}
+  "batch_sender": {
+    "interval": 10,
+    "max_batch_size": 50
+  }
 }

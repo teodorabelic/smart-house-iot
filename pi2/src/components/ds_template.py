@@ -9,7 +9,15 @@ def run_button_component(code, settings, threads, stop_event, batch_sender, pi_i
     simulated = settings.get('simulate', False)
 
     def callback(value, c):
-        batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/sensor/{c}/data', 'device_name': device_name, 'component': c, 'value': int(bool(value)), 'simulated': simulated, 'timestamp': datetime.utcnow().isoformat()})
+        batch_sender.enqueue({
+            '_topic': f'smarthome/{pi_id}/sensors/{c}',
+            'pi_id': pi_id,
+            'device_name': device_name,
+            'code': c,
+            'value': bool(value),
+            'simulated': simulated,
+            'ts': datetime.utcnow().isoformat(),
+        })
 
     if simulated:
         th = threading.Thread(target=run_binary_simulator, args=(interval, callback, stop_event, code, 0.1), daemon=True)

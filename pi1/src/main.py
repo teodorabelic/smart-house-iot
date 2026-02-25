@@ -45,16 +45,16 @@ def main():
     stop_event = threading.Event()
     threads = []
 
-    # if 'DS1' in settings:
-    #     run_ds1(settings['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'DPIR1' in settings:
-    #     run_dpir1(settings['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DS1' in settings:
+        run_ds1(settings['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DPIR1' in settings:
+        run_dpir1(settings['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
     if 'DMS' in settings:
         run_dms(settings['DMS'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'DUS1' in settings:
-    #     run_dus1(settings['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'WEBC' in settings:
-    #     run_webc(settings['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DUS1' in settings:
+        run_dus1(settings['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'WEBC' in settings:
+        run_webc(settings['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
 
     #LED
     led = None

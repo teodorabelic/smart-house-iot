@@ -10,6 +10,7 @@ class RGBController:
         'BLUE': (0, 0, 100),
         'OFF': (0, 0, 0),
         'POWER': (100, 100, 100),
+        'WHITE': (100, 100, 100),
     }
 
     def __init__(self, settings, batch_sender, pi_id, device_name):
@@ -22,6 +23,15 @@ class RGBController:
             self.driver.initialize()
 
     def apply_command(self, cmd):
+        cmd = str(cmd).upper()
         color = self.MAP.get(cmd, (0, 0, 0))
         state = self.driver.set_color(*color)
-        self.batch_sender.enqueue({'_topic': f'smart_home/{self.pi_id}/actuator/BRGB/data', 'device_name': self.device_name, 'component': 'BRGB', 'value': {'command': cmd, 'color': state}, 'simulated': self.simulate, 'timestamp': datetime.utcnow().isoformat()})
+        self.batch_sender.enqueue({
+            '_topic': f'smarthome/{self.pi_id}/sensors/BRGB',
+            'pi_id': self.pi_id,
+            'device_name': self.device_name,
+            'code': 'BRGB',
+            'value': {'command': cmd, 'color': state},
+            'simulated': self.simulate,
+            'ts': datetime.utcnow().isoformat(),
+        })

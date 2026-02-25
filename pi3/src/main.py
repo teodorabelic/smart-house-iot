@@ -20,30 +20,45 @@ from components.lcd_display import run_lcd_display
 
 def main():
     settings = load_settings('settings.json')
-    pi_id = settings['device']['name']
+    pi_id = settings['device']['name'].upper()
+    device_name = settings['device'].get('location', pi_id)
     mqtt_cfg = settings['mqtt']
-    mqtt = MqttClient(mqtt_cfg['broker'], int(mqtt_cfg['port']), client_id=f'{pi_id}-client')
+    mqtt = MqttClient(mqtt_cfg.get('host', mqtt_cfg.get('broker', 'localhost')), int(mqtt_cfg['port']), client_id=f'{pi_id}-client')
     mqtt.connect()
     batch_sender = BatchSender(mqtt, qos=1, max_batch_size=int(settings['batch_sender']['max_batch_size']), flush_interval_sec=float(settings['batch_sender']['interval']))
     batch_sender.start()
 
     stop_event = threading.Event(); threads = []
     comps = settings['components']
-    run_dht1(comps['DHT1'], threads, stop_event, batch_sender, pi_id, pi_id)
-    run_dht2(comps['DHT2'], threads, stop_event, batch_sender, pi_id, pi_id)
-    run_dpir3(comps['DPIR3'], threads, stop_event, batch_sender, pi_id, pi_id)
-
-    rgb = RGBController(comps['BRGB'], batch_sender, pi_id, pi_id)
-    run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, pi_id, rgb.apply_command)
 
     latest = {'DHT1': None, 'DHT2': None, 'DHT3': None}
 
+    def on_dht_value(code, value):
+        latest[code] = value
+
+    run_dht1(comps['DHT1'], threads, stop_event, batch_sender, pi_id, device_name, on_dht_value)
+    run_dht2(comps['DHT2'], threads, stop_event, batch_sender, pi_id, device_name, on_dht_value)
+    run_dpir3(comps['DPIR3'], threads, stop_event, batch_sender, pi_id, device_name)
+
+    rgb = RGBController(comps['BRGB'], batch_sender, pi_id, device_name)
+    run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, rgb.apply_command)
+
+    def on_actuator(topic, payload):
+        code = topic.split('/')[-2].upper()
+        if code == 'BRGB':
+            cmd = payload.get('action') or payload.get('command') or 'OFF'
+            rgb.apply_command(cmd)
+
+    mqtt.subscribe_json(f"smarthome/{pi_id}/actuators/+/set", on_actuator, qos=1)
+
+    order = ['DHT1', 'DHT2', 'DHT3']
+    idx = {'i': 0}
+
     def lines():
-        for key in ['DHT1', 'DHT2', 'DHT3']:
-            v = latest.get(key) or {'temperature': '--', 'humidity': '--'}
-            if v:
-                return (f'{key} T:{v["temperature"]}', f'H:{v["humidity"]}%')
-        return ('Smart House', 'No DHT data')
+        key = order[idx['i'] % len(order)]
+        idx['i'] += 1
+        v = latest.get(key) or {'temperature': '--', 'humidity': '--'}
+        return (f'{key} T:{v["temperature"]}', f'H:{v["humidity"]}%')
 
     run_lcd_display(comps['LCD'], threads, stop_event, lines)
 
@@ -62,6 +77,7 @@ def main():
         for t in threads: t.join(timeout=1)
         batch_sender.join(timeout=2); mqtt.close()
         if GPIO is not None: GPIO.cleanup()
+
 
 if __name__ == '__main__':
     main()

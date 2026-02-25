@@ -1,21 +1,71 @@
 {
-  "device": {"name": "pi2", "pi_number": 2, "location": "kitchen"},
+  "device": {
+    "name": "PI2",
+    "pi_number": 2,
+    "location": "kitchen"
+  },
   "mqtt": {
     "broker": "localhost",
     "port": 1883,
     "topics": {
       "sensor_data": "smart_home/pi2/sensors/data",
       "actuator_command": "smart_home/pi2/actuators/command"
-    }
+    },
+    "host": "localhost",
+    "base_topic": "smarthome"
   },
   "components": {
-    "DS2": {"type": "button", "pin": 17, "simulate": true, "pull_up": true, "interval": 0.2},
-    "DUS2": {"type": "ultrasonic", "trigger_pin": 23, "echo_pin": 24, "simulate": true, "interval": 1},
-    "DPIR2": {"type": "pir", "pin": 25, "simulate": true, "interval": 1},
-    "4SD": {"type": "7segment", "clk_pin": 5, "dio_pin": 6, "simulate": true, "initial_seconds": 0, "button_add_seconds": 30},
-    "BTN": {"type": "button", "pin": 13, "simulate": true, "pull_up": true, "interval": 0.2},
-    "DHT3": {"type": "dht11", "pin": 4, "simulate": true, "read_interval": 5},
-    "GSG": {"type": "gyroscope", "i2c_address": "0x68", "simulate": true, "threshold": 10.0, "interval": 1}
+    "DS2": {
+      "type": "button",
+      "pin": 17,
+      "simulate": true,
+      "pull_up": true,
+      "interval": 0.2
+    },
+    "DUS2": {
+      "type": "ultrasonic",
+      "trigger_pin": 23,
+      "echo_pin": 24,
+      "simulate": true,
+      "interval": 1
+    },
+    "DPIR2": {
+      "type": "pir",
+      "pin": 25,
+      "simulate": true,
+      "interval": 1
+    },
+    "4SD": {
+      "type": "7segment",
+      "clk_pin": 5,
+      "dio_pin": 6,
+      "simulate": true,
+      "initial_seconds": 0,
+      "button_add_seconds": 30
+    },
+    "BTN": {
+      "type": "button",
+      "pin": 13,
+      "simulate": true,
+      "pull_up": true,
+      "interval": 0.2
+    },
+    "DHT3": {
+      "type": "dht11",
+      "pin": 4,
+      "simulate": true,
+      "read_interval": 5
+    },
+    "GSG": {
+      "type": "gyroscope",
+      "i2c_address": "0x68",
+      "simulate": true,
+      "threshold": 10.0,
+      "interval": 1
+    }
   },
-  "batch_sender": {"interval": 10, "max_batch_size": 50}
+  "batch_sender": {
+    "interval": 10,
+    "max_batch_size": 50
+  }
 }

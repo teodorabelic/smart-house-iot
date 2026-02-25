@@ -9,7 +9,15 @@ def run_dpir2(settings, threads, stop_event, batch_sender, pi_id, device_name):
     simulated = settings.get('simulate', False)
 
     def callback(value, code):
-        batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/sensor/{code}/data', 'device_name': device_name, 'component': code, 'value': int(bool(value)), 'simulated': simulated, 'timestamp': datetime.utcnow().isoformat()})
+        batch_sender.enqueue({
+            '_topic': f'smarthome/{pi_id}/sensors/{code}',
+            'pi_id': pi_id,
+            'device_name': device_name,
+            'code': code,
+            'value': bool(value),
+            'simulated': simulated,
+            'ts': datetime.utcnow().isoformat(),
+        })
 
     if simulated:
         th = threading.Thread(target=run_binary_simulator, args=(interval, callback, stop_event, 'DPIR2', 0.2), daemon=True)
