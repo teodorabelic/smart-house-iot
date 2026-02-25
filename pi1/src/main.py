@@ -23,8 +23,9 @@ from components.actuator_listener import ActuatorController
 
 def main():
     settings = load_settings('settings.json')
-    pi_id = settings['pi']['pi_id']
-    device_name = settings['pi']['device_name']
+    pi_cfg = settings['pi']
+    pi_id = pi_cfg['pi_id']
+    device_name = pi_cfg['device_name']
 
     mqtt_cfg = settings['mqtt']
     base_topic = mqtt_cfg.get('base_topic', 'smarthome')
@@ -45,27 +46,29 @@ def main():
     stop_event = threading.Event()
     threads = []
 
-    # if 'DS1' in settings:
-    #     run_ds1(settings['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'DPIR1' in settings:
-    #     run_dpir1(settings['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
-    if 'DMS' in settings:
-        run_dms(settings['DMS'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'DUS1' in settings:
-    #     run_dus1(settings['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
-    # if 'WEBC' in settings:
-    #     run_webc(settings['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
+    comps = settings.get('components', {})
+
+    if 'DS1' in comps:
+        run_ds1(comps['DS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DPIR1' in comps:
+        run_dpir1(comps['DPIR1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DMS' in comps:
+        run_dms(comps['DMS'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'DUS1' in comps:
+        run_dus1(comps['DUS1'], threads, stop_event, batch_sender, pi_id, device_name)
+    if 'WEBC' in comps:
+        run_webc(comps['WEBC'], threads, stop_event, batch_sender, pi_id, device_name)
 
     #LED
     led = None
-    if 'DL' in settings and not settings['DL'].get('simulated', True):
-        led = Led(settings['DL']['pin'])
+    if 'DL' in comps and not comps['DL'].get('simulated', True):
+        led = Led(comps['DL']['pin'])
         led.setup()
 
     #BUZEER
     buzzer = None
-    if 'DB' in settings and not settings['DB'].get('simulated', True):
-        buzzer = Buzzer(settings['DB']['pin'])
+    if 'DB' in comps and not comps['DB'].get('simulated', True):
+        buzzer = Buzzer(comps['DB']['pin'])
         buzzer.setup()
 
     controller = ActuatorController(settings, pi_id=pi_id, base_topic=base_topic, mqtt=mqtt, qos=qos, led=led, buzzer=buzzer)

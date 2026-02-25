@@ -1,8 +1,9 @@
 import threading
 from datetime import datetime
 from sensors.keypad import KeypadSensor, run_keypad_loop
+from simulators.keypad import run_keypad_simulator
 
-def dms_callback(key, code, batch_sender, pi_id, device_name):
+def dms_callback(key, code, batch_sender, pi_id, device_name, simulated):
     t = datetime.utcnow().isoformat()
 
     print("=" * 20)
@@ -15,7 +16,9 @@ def dms_callback(key, code, batch_sender, pi_id, device_name):
         "pi_id": pi_id,
         "device_name": device_name,
         "code": code,
+        "value": key,
         "key": key,
+        "simulated": simulated,
         "ts": t
     })
 
@@ -25,7 +28,17 @@ def run_dms(settings, threads, stop_event, batch_sender, pi_id, device_name):
     simulated = settings.get("simulated", True)
 
     if simulated:
-        print("Keypad simulation not implemented")
+        print("Starting Keypad simulator")
+        cb = lambda key, code: dms_callback(
+            key, code, batch_sender, pi_id, device_name, True
+        )
+        th = threading.Thread(
+            target=run_keypad_simulator,
+            args=(interval, cb, stop_event, "DMS"),
+            daemon=True
+        )
+        th.start()
+        threads.append(th)
         return
 
     print("Starting Keypad real loop")
@@ -33,7 +46,7 @@ def run_dms(settings, threads, stop_event, batch_sender, pi_id, device_name):
     sensor = KeypadSensor(settings["rows"], settings["cols"])
 
     cb = lambda key, code: dms_callback(
-        key, code, batch_sender, pi_id, device_name
+        key, code, batch_sender, pi_id, device_name, False
     )
 
     th = threading.Thread(

@@ -17,7 +17,15 @@ def run_ir_receiver(settings, threads, stop_event, batch_sender, pi_id, device_n
             cmd = raw if isinstance(raw, str) else ('POWER' if raw else 'NONE')
             if cmd != 'NONE':
                 on_command(cmd)
-                batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/sensor/IR/data', 'device_name': device_name, 'component': 'IR', 'value': cmd, 'simulated': simulated, 'timestamp': datetime.utcnow().isoformat()})
+                batch_sender.enqueue({
+                    '_topic': f'smarthome/{pi_id}/sensors/IR',
+                    'pi_id': pi_id,
+                    'device_name': device_name,
+                    'code': 'IR',
+                    'value': cmd,
+                    'simulated': simulated,
+                    'ts': datetime.utcnow().isoformat(),
+                })
             stop_event.wait(interval)
 
     th = threading.Thread(target=loop, daemon=True)

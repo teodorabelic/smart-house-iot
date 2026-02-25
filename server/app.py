@@ -1,7 +1,12 @@
-import os, json, threading
+import json
+import os
+import threading
+import time
+from collections import defaultdict, deque
 from datetime import datetime
-from flask import Flask, request, jsonify
+
 from dotenv import load_dotenv
+from flask import Flask, jsonify, render_template, request
 
 import paho.mqtt.client as mqtt
 from influxdb_client import InfluxDBClient, Point, WritePrecision
@@ -16,29 +21,66 @@ INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "iot_bucket")
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 BASE_TOPIC = os.getenv("MQTT_BASE_TOPIC", "smarthome")
-PI_ID_FILTER = os.getenv("PI_ID_FILTER", "PI1").strip()
+PI_ID_FILTER = os.getenv("PI_ID_FILTER", "").strip()
+WEB_PIN = os.getenv("ALARM_PIN", "1234")
+GRAFANA_EMBED_URL = os.getenv("GRAFANA_EMBED_URL", "")
 
 app = Flask(__name__)
 
 influx = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 write_api = influx.write_api()
 
+latest_state = {}
+state_lock = threading.Lock()
+
+system_state = {
+    "alarm_active": False,
+    "system_armed": False,
+    "arm_at": None,
+    "pin": WEB_PIN,
+    "persons_count": 0,
+    "timer_add_seconds": 30,
+    "pin_buffer": "",
+}
+
+ds_pressed_since = {}
+dus_history = defaultdict(lambda: deque(maxlen=8))
+
+
+def now_iso():
+    return datetime.utcnow().isoformat()
+
+
+def parse_payload(msg):
+    try:
+        return json.loads(msg.payload.decode("utf-8"))
+    except Exception:
+        return {"raw": msg.payload.decode("utf-8", errors="ignore")}
+
+
 def write_sensor_to_influx(data: dict):
+    code = str(data.get("code", ""))
     point = (
         Point("sensor_readings")
         .tag("pi_id", str(data.get("pi_id", "")))
         .tag("device_name", str(data.get("device_name", "")))
-        .tag("code", str(data.get("code", "")))
+        .tag("code", code)
         .tag("simulated", str(bool(data.get("simulated", False))).lower())
     )
 
     val = data.get("value", None)
     if isinstance(val, bool):
         point = point.field("value_bool", val)
-    elif val is None:
-        point = point.field("value_num", float("nan"))
-    else:
+    elif isinstance(val, (int, float)):
         point = point.field("value_num", float(val))
+    elif isinstance(val, dict):
+        point = point.field("value_json", json.dumps(val))
+        if "temperature" in val:
+            point = point.field("temperature", float(val.get("temperature", 0)))
+        if "humidity" in val:
+            point = point.field("humidity", float(val.get("humidity", 0)))
+    else:
+        point = point.field("value_str", str(val))
 
     ts = data.get("ts")
     try:
@@ -48,10 +90,9 @@ def write_sensor_to_influx(data: dict):
 
     point = point.time(dt, WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
-    print("WROTE TO INFLUX:", point.to_line_protocol())
+
 
 def write_actuator_to_influx(data: dict):
-    print("WRITING ACTUATOR:", data)
     point = (
         Point("actuator_events")
         .tag("pi_id", str(data.get("pi_id", "")))
@@ -61,62 +102,219 @@ def write_actuator_to_influx(data: dict):
     point = point.time(datetime.utcnow(), WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 
+
+def publish_actuator(pi_id, code, payload):
+    topic = f"{BASE_TOPIC}/{pi_id}/actuators/{code}/set"
+    mqttc.publish(topic, json.dumps(payload), qos=1, retain=False)
+
+
+def set_alarm(active, reason=""):
+    with state_lock:
+        changed = system_state["alarm_active"] != bool(active)
+        system_state["alarm_active"] = bool(active)
+    if not changed:
+        return
+    action = "on" if active else "off"
+    publish_actuator("PI1", "DB", {"action": action})
+    point = Point("system_events").tag("event", "alarm").field("active", bool(active)).field("reason", reason).time(datetime.utcnow(), WritePrecision.NS)
+    write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+
+
+def handle_sensor_logic(pi_id, code, value):
+    now = time.time()
+
+    if code in {"DUS1", "DUS2"}:
+        try:
+            dus_history[code].append((now, float(value)))
+        except Exception:
+            return
+
+    if code in {"DS1", "DS2"}:
+        pressed = bool(value)
+        if pressed and code not in ds_pressed_since:
+            ds_pressed_since[code] = now
+        if not pressed:
+            ds_pressed_since.pop(code, None)
+            return
+        if now - ds_pressed_since.get(code, now) >= 5:
+            set_alarm(True, f"{code}_open_over_5s")
+        if system_state.get("system_armed"):
+            set_alarm(True, f"{code}_trigger_when_armed")
+
+    if code == "DMS":
+        k = str(value)
+        if k.isdigit():
+            with state_lock:
+                system_state["pin_buffer"] = (system_state.get("pin_buffer", "") + k)[-4:]
+                current = system_state["pin_buffer"]
+            if current == system_state["pin"]:
+                with state_lock:
+                    if system_state["alarm_active"]:
+                        system_state["system_armed"] = False
+                        system_state["arm_at"] = None
+                        system_state["pin_buffer"] = ""
+                        disable = True
+                    else:
+                        system_state["arm_at"] = now + 10
+                        system_state["pin_buffer"] = ""
+                        disable = False
+                if disable:
+                    set_alarm(False, "pin_ok")
+
+    if code in {"DPIR1", "DPIR2"} and bool(value):
+        if code == "DPIR1":
+            publish_actuator("PI1", "DL", {"action": "on"})
+            threading.Timer(10.0, lambda: publish_actuator("PI1", "DL", {"action": "off"})).start()
+
+        dus_code = "DUS1" if code == "DPIR1" else "DUS2"
+        vals = [v for ts, v in dus_history[dus_code] if now - ts <= 4]
+        if len(vals) >= 2:
+            if vals[-1] < vals[0]:
+                with state_lock:
+                    system_state["persons_count"] += 1
+            elif vals[-1] > vals[0]:
+                with state_lock:
+                    system_state["persons_count"] = max(0, system_state["persons_count"] - 1)
+
+    if code in {"DPIR1", "DPIR2", "DPIR3"} and bool(value):
+        if system_state.get("persons_count", 0) == 0:
+            set_alarm(True, f"motion_empty_home_{code}")
+
+    if code == "GSG" and isinstance(value, dict) and bool(value.get("significant_movement")):
+        set_alarm(True, "gyroscope_significant_movement")
+
+    if code == "BTN" and bool(value):
+        publish_actuator("PI2", "BTN", {"action": "add", "seconds": int(system_state["timer_add_seconds"])})
+
+
+def check_scheduled_arm():
+    with state_lock:
+        arm_at = system_state.get("arm_at")
+        if arm_at and time.time() >= arm_at:
+            system_state["system_armed"] = True
+            system_state["arm_at"] = None
+
+
 mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="server-subscriber")
+
 
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
-        print("MQTT connected")
         client.subscribe(f"{BASE_TOPIC}/+/sensors/#", qos=1)
         client.subscribe(f"{BASE_TOPIC}/+/actuators/+/state", qos=1)
-    else:
-        print("MQTT connection failed:", reason_code)
+
 
 def on_message(client, userdata, msg):
-    print("SERVER GOT:", msg.topic, msg.payload)
-    try:
-        payload = json.loads(msg.payload.decode("utf-8"))
-    except Exception:
-        payload = {"raw": msg.payload.decode("utf-8", errors="ignore")}
-
+    payload = parse_payload(msg)
     parts = msg.topic.split("/")
     if len(parts) < 3 or parts[0] != BASE_TOPIC:
         return
+
     pi_id = parts[1]
     if PI_ID_FILTER and pi_id != PI_ID_FILTER:
         return
 
     if len(parts) >= 4 and parts[2] == "sensors":
+        payload.setdefault("pi_id", pi_id)
+        payload.setdefault("code", parts[3])
+        payload.setdefault("ts", now_iso())
         write_sensor_to_influx(payload)
+        with state_lock:
+            latest_state[payload["code"]] = payload
+        handle_sensor_logic(pi_id, payload["code"], payload.get("value"))
     elif len(parts) >= 5 and parts[2] == "actuators" and parts[4] == "state":
+        payload.setdefault("pi_id", pi_id)
+        payload.setdefault("code", parts[3])
         write_actuator_to_influx(payload)
+        with state_lock:
+            latest_state[f"ACT_{parts[3]}"] = payload
+
 
 mqttc.on_connect = on_connect
 mqttc.on_message = on_message
+
 
 def mqtt_thread():
     mqttc.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
     mqttc.loop_forever()
 
+
+def scheduler_thread():
+    while True:
+        check_scheduled_arm()
+        time.sleep(0.5)
+
+
 threading.Thread(target=mqtt_thread, daemon=True).start()
+threading.Thread(target=scheduler_thread, daemon=True).start()
+
+
+@app.get("/")
+def index():
+    return render_template("index.html", grafana_embed=GRAFANA_EMBED_URL)
+
 
 @app.get("/health")
 def health():
     return jsonify({"ok": True, "mqtt": {"host": MQTT_HOST, "port": MQTT_PORT}, "influx": {"url": INFLUX_URL}})
 
-@app.post("/actuators/<code>")
-def actuator(code: str):
-    """
-    Body JSON:
-      {"action":"on"}
-      {"action":"off"}
-      {"action":"toggle"}
-      {"action":"beep","n":3,"duration":0.2,"pitch":440}
-    """
+
+@app.get("/api/state")
+def api_state():
+    with state_lock:
+        return jsonify({"system": system_state, "latest": latest_state})
+
+
+@app.post("/api/alarm")
+def api_alarm():
     data = request.get_json(force=True, silent=True) or {}
-    pi_id = request.args.get("pi_id") or (PI_ID_FILTER if PI_ID_FILTER else "PI1")
-    topic = f"{BASE_TOPIC}/{pi_id}/actuators/{code.upper()}/set"
-    mqttc.publish(topic, json.dumps(data), qos=1, retain=False)
-    return jsonify({"published": True, "topic": topic, "payload": data})
+    action = str(data.get("action", "")).lower()
+    if action == "on":
+        set_alarm(True, "web_manual")
+    elif action == "off":
+        set_alarm(False, "web_manual")
+        with state_lock:
+            system_state["system_armed"] = False
+            system_state["arm_at"] = None
+    return jsonify({"ok": True})
+
+
+@app.post("/api/pin")
+def api_pin():
+    data = request.get_json(force=True, silent=True) or {}
+    pin = str(data.get("pin", ""))
+    if pin == system_state["pin"]:
+        set_alarm(False, "web_pin_ok")
+        with state_lock:
+            system_state["system_armed"] = False
+            system_state["arm_at"] = None
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "Invalid PIN"}), 400
+
+
+@app.post("/api/timer")
+def api_timer():
+    data = request.get_json(force=True, silent=True) or {}
+    seconds = int(data.get("seconds", 0))
+    publish_actuator("PI2", "4SD", {"action": "set", "seconds": max(0, seconds)})
+    return jsonify({"ok": True})
+
+
+@app.post("/api/timer/add-seconds")
+def api_timer_add_seconds():
+    data = request.get_json(force=True, silent=True) or {}
+    with state_lock:
+        system_state["timer_add_seconds"] = max(1, int(data.get("seconds", 30)))
+    return jsonify({"ok": True, "timer_add_seconds": system_state["timer_add_seconds"]})
+
+
+@app.post("/api/rgb")
+def api_rgb():
+    data = request.get_json(force=True, silent=True) or {}
+    action = str(data.get("action", "OFF")).upper()
+    publish_actuator("PI3", "BRGB", {"action": action})
+    return jsonify({"ok": True, "action": action})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=False)
