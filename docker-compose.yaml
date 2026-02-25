@@ -13,20 +13,38 @@ services:
     image: influxdb:2.7
     ports:
       - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_INIT_USERNAME:-iot}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_INIT_PASSWORD:-iot-projekat}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-smart-house}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-iot_bucket}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:-60an128EFRiHE8-K-bV9w9rIJFayaGfIegG0Gcx5pcFhi6l-oPqFs8MRGt0q-ef0daV3n4_FRv2t6hsA_UdYfw==}
     volumes:
       - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
 
   grafana:
     image: grafana/grafana:10.4.5
     ports:
       - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      INFLUX_ORG: ${INFLUX_ORG:-smart-house}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-iot_bucket}
+      INFLUX_TOKEN: ${INFLUX_TOKEN:-60an128EFRiHE8-K-bV9w9rIJFayaGfIegG0Gcx5pcFhi6l-oPqFs8MRGt0q-ef0daV3n4_FRv2t6hsA_UdYfw==}
     depends_on:
       - influxdb
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
 volumes:
   mosquitto_data:
   mosquitto_log:
   influxdb_data:
+  influxdb_config:
   grafana_data:
