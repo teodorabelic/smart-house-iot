@@ -1,17 +1,18 @@
 {
-  "pi": {
-    "pi_id": "PI3",
-    "device_name": "living-room-bedroom-pi"
+  "device": {
+    "name": "PI3",
+    "pi_number": 3,
+    "location": "living_room_bedrooms"
   },
   "mqtt": {
     "host": "127.0.0.1",
     "port": 1883,
-    "base_topic": "smarthome",
-    "qos": 1
-  },
-  "batch": {
-    "max_batch_size": 50,
-    "flush_interval_sec": 10
+    "topics": {
+      "sensor_data": "smart_home/pi3/sensors/data",
+      "actuator_command": "smart_home/pi3/actuators/command"
+    },
+    "host": "localhost",
+    "base_topic": "smarthome"
   },
   "components": {
     "DHT1": {
@@ -55,5 +56,9 @@
       "simulate": true,
       "interval": 1
     }
+  },
+  "batch_sender": {
+    "interval": 10,
+    "max_batch_size": 50
   }
 }

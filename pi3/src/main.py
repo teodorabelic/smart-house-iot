@@ -20,12 +20,10 @@ from components.lcd_display import run_lcd_display
 
 def main():
     settings = load_settings('settings.json')
-    pi_cfg = settings['pi']
-    pi_id = pi_cfg['pi_id']
-    device_name = pi_cfg['device_name']
+    pi_id = settings['device']['name'].upper()
+    device_name = settings['device'].get('location', pi_id)
     mqtt_cfg = settings['mqtt']
-    qos = int(mqtt_cfg.get('qos', 1))
-    mqtt = MqttClient(mqtt_cfg.get('host', '127.0.0.1'), int(mqtt_cfg['port']), client_id=f'{pi_id}-client')
+    mqtt = MqttClient(mqtt_cfg.get('host', mqtt_cfg.get('broker', 'localhost')), int(mqtt_cfg['port']), client_id=f'{pi_id}-client')
     mqtt.connect()
     batch_cfg = settings.get('batch', {})
     batch_sender = BatchSender(mqtt, qos=qos, max_batch_size=int(batch_cfg.get('max_batch_size', 50)), flush_interval_sec=float(batch_cfg.get('flush_interval_sec', 10)))
@@ -52,7 +50,7 @@ def main():
             cmd = payload.get('action') or payload.get('command') or 'OFF'
             rgb.apply_command(cmd)
 
-    mqtt.subscribe_json(f"smarthome/{pi_id}/actuators/+/set", on_actuator, qos=qos)
+    mqtt.subscribe_json(f"smarthome/{pi_id}/actuators/+/set", on_actuator, qos=1)
 
     order = ['DHT1', 'DHT2', 'DHT3']
     idx = {'i': 0}
