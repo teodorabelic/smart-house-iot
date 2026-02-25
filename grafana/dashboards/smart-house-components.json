@@ -1,0 +1,654 @@
+{
+  "id": null,
+  "uid": "smart-house-components",
+  "title": "Smart House - Components by PI",
+  "tags": [
+    "iot",
+    "components"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "bucket",
+        "type": "custom",
+        "query": "iot_bucket",
+        "current": {
+          "text": "iot_bucket",
+          "value": "iot_bucket"
+        },
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "PI1 / DS1 - Door Sensor",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DS1\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "PI1 / DPIR1 - Motion",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DPIR1\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "PI1 / DUS1 - Distance",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DUS1\")\n  |> filter(fn: (r) => r._field == \"value_num\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"value\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "PI1 / DMS - Keypad",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DMS\")\n  |> filter(fn: (r) => r._field == \"value_str\" or r._field == \"value_json\")\n  |> last()\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "PI1 / DL - Actuator state",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DL\")\n  |> last()"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "PI1 / DB - Actuator state",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI1\" and r.code == \"DB\")\n  |> last()"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "PI2 / DS2 - Door Sensor",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"DS2\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "PI2 / DPIR2 - Motion",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"DPIR2\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "PI2 / DUS2 - Distance",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"DUS2\")\n  |> filter(fn: (r) => r._field == \"value_num\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"value\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "PI2 / DHT3 - Temp/Humidity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"DHT3\")\n  |> filter(fn: (r) => r._field == \"temperature\" or r._field == \"humidity\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"dht\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "PI2 / GSG - Gyroscope",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"GSG\")\n  |> filter(fn: (r) => r._field == \"value_str\" or r._field == \"value_json\")\n  |> last()\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "PI2 / BTN - Button",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"BTN\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "PI2 / 4SD - Timer",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"4SD\")\n  |> filter(fn: (r) => r._field == \"value_str\" or r._field == \"value_json\")\n  |> last()\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "PI2 / 4SD - Actuator state",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"4SD\")\n  |> last()"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "PI3 / DHT1 - Temp/Humidity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"DHT1\")\n  |> filter(fn: (r) => r._field == \"temperature\" or r._field == \"humidity\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"dht\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "PI3 / DHT2 - Temp/Humidity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"DHT2\")\n  |> filter(fn: (r) => r._field == \"temperature\" or r._field == \"humidity\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"dht\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "PI3 / DPIR3 - Motion",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 40
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"DPIR3\")\n  |> filter(fn: (r) => r._field == \"value_bool\")\n  |> map(fn: (r) => ({ r with _value: if r._value then 1.0 else 0.0 }))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"state\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "table",
+      "title": "PI3 / IR - Remote command",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 40
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"IR\")\n  |> filter(fn: (r) => r._field == \"value_str\" or r._field == \"value_json\")\n  |> last()\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 19,
+      "type": "table",
+      "title": "PI3 / BRGB - RGB state",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 48
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"sensor_readings\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"BRGB\")\n  |> filter(fn: (r) => r._field == \"value_str\" or r._field == \"value_json\")\n  |> last()\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 20,
+      "type": "table",
+      "title": "PI3 / BRGB - Actuator state",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 48
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"BRGB\")\n  |> last()"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "System / Alarm events",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-iot"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"system_events\")\n  |> sort(columns:[\"_time\"], desc:true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    }
+  ]
+}

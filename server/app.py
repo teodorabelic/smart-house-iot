@@ -21,7 +21,12 @@ INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "iot_bucket")
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 BASE_TOPIC = os.getenv("MQTT_BASE_TOPIC", "smarthome")
-PI_ID_FILTER = os.getenv("PI_ID_FILTER", "").strip()
+PI_ID_FILTER_RAW = os.getenv("PI_ID_FILTER", "")
+PI_ID_FILTERS = {
+    item.strip().upper()
+    for item in PI_ID_FILTER_RAW.split(",")
+    if item.strip()
+}
 WEB_PIN = os.getenv("ALARM_PIN", "1234")
 GRAFANA_EMBED_URL = os.getenv("GRAFANA_EMBED_URL", "")
 
@@ -211,7 +216,7 @@ def on_message(client, userdata, msg):
         return
 
     pi_id = parts[1]
-    if PI_ID_FILTER and pi_id != PI_ID_FILTER:
+    if PI_ID_FILTERS and pi_id.upper() not in PI_ID_FILTERS:
         return
 
     if len(parts) >= 4 and parts[2] == "sensors":
@@ -256,7 +261,14 @@ def index():
 
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "mqtt": {"host": MQTT_HOST, "port": MQTT_PORT}, "influx": {"url": INFLUX_URL}})
+    return jsonify(
+        {
+            "ok": True,
+            "mqtt": {"host": MQTT_HOST, "port": MQTT_PORT},
+            "influx": {"url": INFLUX_URL},
+            "pi_id_filters": sorted(PI_ID_FILTERS),
+        }
+    )
 
 
 @app.get("/api/state")
