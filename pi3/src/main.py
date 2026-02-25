@@ -43,11 +43,20 @@ def main():
     rgb = RGBController(comps['BRGB'], batch_sender, pi_id, device_name)
     run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, rgb.apply_command)
 
+    def publish_actuator_state(code, state):
+        mqtt.publish_json(
+            f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
+            {"pi_id": pi_id, "code": code, "state": str(state)},
+            qos=mqtt_cfg['qos'],
+            retain=False,
+        )
+
     def on_actuator(topic, payload):
         code = topic.split('/')[-2].upper()
         if code == 'BRGB':
             cmd = payload.get('action') or payload.get('command') or 'OFF'
             rgb.apply_command(cmd)
+            publish_actuator_state('BRGB', str(cmd).upper())
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
