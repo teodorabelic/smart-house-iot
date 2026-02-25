@@ -5,7 +5,7 @@
     "location": "kitchen"
   },
   "mqtt": {
-    "broker": "localhost",
+    "host": "127.0.0.1",
     "port": 1883,
     "topics": {
       "sensor_data": "smart_home/pi2/sensors/data",

@@ -28,7 +28,8 @@ def main():
     qos = 1
     mqtt = MqttClient(mqtt_cfg.get('host', mqtt_cfg.get('broker', 'localhost')), int(mqtt_cfg['port']), client_id=f"{pi_id}-client")
     mqtt.connect()
-    batch_sender = BatchSender(mqtt, qos=qos, max_batch_size=int(settings['batch_sender']['max_batch_size']), flush_interval_sec=float(settings['batch_sender']['interval']))
+    batch_cfg = settings.get('batch', {})
+    batch_sender = BatchSender(mqtt, qos=qos, max_batch_size=int(batch_cfg.get('max_batch_size', 50)), flush_interval_sec=float(batch_cfg.get('flush_interval_sec', 10)))
     batch_sender.start()
 
     stop_event = threading.Event(); threads = []

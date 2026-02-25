@@ -23,8 +23,9 @@ from components.actuator_listener import ActuatorController
 
 def main():
     settings = load_settings('settings.json')
-    pi_id = settings['pi']['pi_id']
-    device_name = settings['pi']['device_name']
+    pi_cfg = settings['pi']
+    pi_id = pi_cfg['pi_id']
+    device_name = pi_cfg['device_name']
 
     mqtt_cfg = settings['mqtt']
     base_topic = mqtt_cfg.get('base_topic', 'smarthome')
@@ -58,14 +59,14 @@ def main():
 
     #LED
     led = None
-    if 'DL' in settings and not settings['DL'].get('simulated', True):
-        led = Led(settings['DL']['pin'])
+    if 'DL' in comps and not comps['DL'].get('simulated', True):
+        led = Led(comps['DL']['pin'])
         led.setup()
 
     #BUZEER
     buzzer = None
-    if 'DB' in settings and not settings['DB'].get('simulated', True):
-        buzzer = Buzzer(settings['DB']['pin'])
+    if 'DB' in comps and not comps['DB'].get('simulated', True):
+        buzzer = Buzzer(comps['DB']['pin'])
         buzzer.setup()
 
     controller = ActuatorController(settings, pi_id=pi_id, base_topic=base_topic, mqtt=mqtt, qos=qos, led=led, buzzer=buzzer)
