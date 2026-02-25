@@ -78,19 +78,6 @@ from(bucket: "iot_bucket")
   |> filter(fn: (r) => r.pi_id == "PI2" or r.pi_id == "PI3")
 ```
 
-
-## Troubleshooting: "No data" za `PI2 / 4SD - Actuator state` i `PI3 / BRGB - Actuator state`
-
-Ta dva panela čitaju measurement `actuator_events`, koji se popunjava samo kada PI objavi MQTT poruku na topic:
-
-- `smarthome/PI2/actuators/4SD/state`
-- `smarthome/PI3/actuators/BRGB/state`
-
-Ako panel prikazuje "No data":
-1. restartuj `pi2/src/main.py` i `pi3/src/main.py` (zbog novih publish state izmena),
-2. iz web UI-ja okini `Set` tajmera i promeni BRGB boju bar jednom,
-3. proveri da `server/app.py` radi i da `PI_ID_FILTER` nije restriktivan.
-
 ## Brza provera MQTT-a
 
 ```bash
