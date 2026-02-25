@@ -1,71 +1,14 @@
 {
-  "device": {
-    "name": "PI2",
-    "pi_number": 2,
-    "location": "kitchen"
-  },
-  "mqtt": {
-    "host": "127.0.0.1",
-    "port": 1883,
-    "topics": {
-      "sensor_data": "smart_home/pi2/sensors/data",
-      "actuator_command": "smart_home/pi2/actuators/command"
-    },
-    "host": "localhost",
-    "base_topic": "smarthome"
-  },
+  "device": { "id": "PI2", "name": "kitchen" },
+  "mqtt": { "host": "127.0.0.1", "port": 1883, "base_topic": "smarthome", "qos": 1 },
+  "batch": { "max_batch_size": 50, "flush_interval_sec": 10.0 },
   "components": {
-    "DS2": {
-      "type": "button",
-      "pin": 17,
-      "simulate": true,
-      "pull_up": true,
-      "interval": 0.2
-    },
-    "DUS2": {
-      "type": "ultrasonic",
-      "trigger_pin": 23,
-      "echo_pin": 24,
-      "simulate": true,
-      "interval": 1
-    },
-    "DPIR2": {
-      "type": "pir",
-      "pin": 25,
-      "simulate": true,
-      "interval": 1
-    },
-    "4SD": {
-      "type": "7segment",
-      "clk_pin": 5,
-      "dio_pin": 6,
-      "simulate": true,
-      "initial_seconds": 0,
-      "button_add_seconds": 30
-    },
-    "BTN": {
-      "type": "button",
-      "pin": 13,
-      "simulate": true,
-      "pull_up": true,
-      "interval": 0.2
-    },
-    "DHT3": {
-      "type": "dht11",
-      "pin": 4,
-      "simulate": true,
-      "read_interval": 5
-    },
-    "GSG": {
-      "type": "gyroscope",
-      "i2c_address": "0x68",
-      "simulate": true,
-      "threshold": 10.0,
-      "interval": 1
-    }
-  },
-  "batch_sender": {
-    "interval": 10,
-    "max_batch_size": 50
+    "DS2": { "pin": 17, "simulated": true, "interval": 0.2 },
+    "DUS2": { "trigger_pin": 23, "echo_pin": 24, "simulated": true, "interval": 1 },
+    "DPIR2": { "pin": 25, "simulated": true, "interval": 1 },
+    "4SD": { "clk_pin": 5, "dio_pin": 6, "simulated": true, "button_add_seconds": 30 },
+    "BTN": { "pin": 13, "simulated": true, "interval": 0.2 },
+    "DHT3": { "pin": 4, "simulated": true, "read_interval": 5 },
+    "GSG": { "i2c_address": "0x68", "simulated": true, "threshold": 10.0, "interval": 1 }
   }
 }

@@ -6,7 +6,7 @@ from simulators.binary import run_binary_simulator
 
 def run_dpir2(settings, threads, stop_event, batch_sender, pi_id, device_name):
     interval = settings.get('interval', 1)
-    simulated = settings.get('simulate', False)
+    simulated = settings.get('simulated', False)
 
     def callback(value, code):
         batch_sender.enqueue({

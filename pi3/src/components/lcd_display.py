@@ -3,7 +3,7 @@ from sensors.lcd import LCDDisplay
 
 
 def run_lcd_display(settings, threads, stop_event, get_lines):
-    lcd = LCDDisplay(settings.get('i2c_address', '0x27'), settings.get('cols', 16), settings.get('rows', 2), settings.get('simulate', False))
+    lcd = LCDDisplay(settings.get('i2c_address', '0x27'), settings.get('cols', 16), settings.get('rows', 2), settings.get('simulated', False))
     interval = settings.get('rotation_interval', 5)
 
     def loop():

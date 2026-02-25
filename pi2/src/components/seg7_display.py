@@ -13,7 +13,7 @@ class Seg7Timer:
         self.seconds = int(settings.get('initial_seconds', 0))
         self.add_step = int(settings.get('button_add_seconds', 30))
         self.blinking = False
-        self.simulate = settings.get('simulate', False)
+        self.simulate = settings.get('simulated', False)
         self._lock = threading.Lock()
         self.display = None
         if not self.simulate and tm1637 is not None:

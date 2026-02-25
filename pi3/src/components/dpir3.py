@@ -5,7 +5,7 @@ from simulators.binary import run_binary_simulator
 
 
 def run_dpir3(settings, threads, stop_event, batch_sender, pi_id, device_name):
-    simulated = settings.get('simulate', False)
+    simulated = settings.get('simulated', False)
     interval = settings.get('interval', 1)
 
     def cb(value, code):

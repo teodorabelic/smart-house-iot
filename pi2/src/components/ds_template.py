@@ -6,7 +6,7 @@ from simulators.binary import run_binary_simulator
 
 def run_button_component(code, settings, threads, stop_event, batch_sender, pi_id, device_name):
     interval = settings.get('interval', 1)
-    simulated = settings.get('simulate', False)
+    simulated = settings.get('simulated', False)
 
     def callback(value, c):
         batch_sender.enqueue({

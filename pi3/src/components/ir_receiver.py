@@ -5,7 +5,7 @@ from simulators.ir import IRSimulator
 
 
 def run_ir_receiver(settings, threads, stop_event, batch_sender, pi_id, device_name, on_command):
-    simulated = settings.get('simulate', False)
+    simulated = settings.get('simulated', False)
     interval = settings.get('interval', 0.5)
     sensor = IRSimulator() if simulated else IRSensor(settings['pin'])
     if not simulated:

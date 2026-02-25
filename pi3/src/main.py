@@ -1,5 +1,4 @@
 import threading
-
 try:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
@@ -17,30 +16,30 @@ from components.ir_receiver import run_ir_receiver
 from components.rgb_led_ctrl import RGBController
 from components.lcd_display import run_lcd_display
 
-
 def main():
     settings = load_settings('settings.json')
-    pi_id = settings['device']['name'].upper()
-    device_name = settings['device'].get('location', pi_id)
+    pi_id, device_name = settings['device']['id'], settings['device']['name']
     mqtt_cfg = settings['mqtt']
-    mqtt = MqttClient(mqtt_cfg.get('host', mqtt_cfg.get('broker', 'localhost')), int(mqtt_cfg['port']), client_id=f'{pi_id}-client')
+    
+    mqtt = MqttClient(mqtt_cfg['host'], int(mqtt_cfg['port']), client_id=f"{pi_id}-client")
     mqtt.connect()
-    batch_cfg = settings.get('batch', {})
-    batch_sender = BatchSender(mqtt, qos=qos, max_batch_size=int(batch_cfg.get('max_batch_size', 50)), flush_interval_sec=float(batch_cfg.get('flush_interval_sec', 10)))
+
+    batch_cfg = settings['batch']
+    batch_sender = BatchSender(mqtt, qos=mqtt_cfg['qos'], max_batch_size=batch_cfg['max_batch_size'], flush_interval_sec=batch_cfg['flush_interval_sec'])
     batch_sender.start()
 
-    stop_event = threading.Event(); threads = []
+    stop_event = threading.Event()
+    threads = []
     comps = settings['components']
+    latest_dht = {'DHT1': None, 'DHT2': None}
 
-    latest = {'DHT1': None, 'DHT2': None, 'DHT3': None}
-
-    def on_dht_value(code, value):
-        latest[code] = value
+    def on_dht_value(code, value): latest_dht[code] = value
 
     run_dht1(comps['DHT1'], threads, stop_event, batch_sender, pi_id, device_name, on_dht_value)
     run_dht2(comps['DHT2'], threads, stop_event, batch_sender, pi_id, device_name, on_dht_value)
     run_dpir3(comps['DPIR3'], threads, stop_event, batch_sender, pi_id, device_name)
 
+    # RGB Controller - On unutar sebe radi setup pinova
     rgb = RGBController(comps['BRGB'], batch_sender, pi_id, device_name)
     run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, rgb.apply_command)
 
@@ -50,35 +49,29 @@ def main():
             cmd = payload.get('action') or payload.get('command') or 'OFF'
             rgb.apply_command(cmd)
 
-    mqtt.subscribe_json(f"smarthome/{pi_id}/actuators/+/set", on_actuator, qos=1)
+    mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
-    order = ['DHT1', 'DHT2', 'DHT3']
-    idx = {'i': 0}
+    order = ['DHT1', 'DHT2']; idx = [0]
+    def get_lcd_lines():
+        key = order[idx[0] % len(order)]; idx[0] += 1
+        v = latest_dht.get(key) or {'temperature': '--', 'humidity': '--'}
+        return (f"{key} T:{v['temperature']}", f"H:{v['humidity']}%")
 
-    def lines():
-        key = order[idx['i'] % len(order)]
-        idx['i'] += 1
-        v = latest.get(key) or {'temperature': '--', 'humidity': '--'}
-        return (f'{key} T:{v["temperature"]}', f'H:{v["humidity"]}%')
+    run_lcd_display(comps['LCD'], threads, stop_event, get_lcd_lines)
 
-    run_lcd_display(comps['LCD'], threads, stop_event, lines)
-
-    print('PI3 running. Commands: rgb red|green|blue|off, exit')
     try:
         while not stop_event.is_set():
-            cmd = input('PI3> ').strip().upper()
-            if cmd == 'EXIT':
-                break
-            if cmd.startswith('RGB '):
-                rgb.apply_command(cmd.split()[1])
-    except (EOFError, KeyboardInterrupt):
+            cmd = input(f"{pi_id}> ").strip().upper()
+            if cmd == 'EXIT': break
+            if cmd.startswith('RGB '): rgb.apply_command(cmd.split()[1])
+    except (KeyboardInterrupt, EOFError):
         pass
     finally:
-        stop_event.set(); batch_sender.stop()
-        for t in threads: t.join(timeout=1)
-        batch_sender.join(timeout=2); mqtt.close()
-        if GPIO is not None: GPIO.cleanup()
-
+        stop_event.set()
+        batch_sender.stop()
+        for t in threads: t.join(timeout=1.0)
+        mqtt.close()
+        if GPIO: GPIO.cleanup()
 
 if __name__ == '__main__':
     main()

@@ -1,56 +1,14 @@
 {
-  "pi": {
-    "pi_id": "PI1",
-    "device_name": "front-door-pi"
-  },
-  "mqtt": {
-    "host": "127.0.0.1",
-    "port": 1883,
-    "base_topic": "smarthome",
-    "qos": 1
-  },
-  "batch": {
-    "max_batch_size": 20,
-    "flush_interval_sec": 2.0
-  },
+  "device": { "id": "PI1", "name": "front-door" },
+  "mqtt": { "host": "127.0.0.1", "port": 1883, "base_topic": "smarthome", "qos": 1 },
+  "batch": { "max_batch_size": 20, "flush_interval_sec": 2.0 },
   "components": {
-    "DS1": {
-      "simulated": true,
-      "pin": 17,
-      "pull": "UP",
-      "interval": 0.05
-    },
-    "DPIR1": {
-      "simulated": true,
-      "pin": 27,
-      "interval": 1
-    },
-    "DMS": {
-      "simulated": false,
-      "rows": [25, 8, 7, 1],
-      "cols": [12, 16, 20, 21],
-      "interval": 0.1
-    },
-    "DUS1": {
-      "simulated": true,
-      "trig_pin": 23,
-      "echo_pin": 24,
-      "interval": 1
-    },
-    "DL": {
-      "simulated": true,
-      "pin": 5
-    },
-    "DB": {
-      "simulated": true,
-      "pin": 16
-    },
-    "WEBC": {
-      "type": "camera",
-      "resolution": [640, 480],
-      "simulate": true,
-      "capture_interval": 30,
-      "storage_path": "/tmp/camera_captures/"
-    }
+    "DS1": { "simulated": true, "pin": 17, "pull": "UP", "interval": 0.05 },
+    "DPIR1": { "simulated": true, "pin": 27, "interval": 1 },
+    "DMS": { "simulated": true, "rows": [25, 8, 7, 1], "cols": [12, 16, 20, 21], "interval": 0.1 },
+    "DUS1": { "simulated": true, "trig_pin": 23, "echo_pin": 24, "interval": 1 },
+    "DL": { "simulated": true, "pin": 5 },
+    "DB": { "simulated": true, "pin": 16 },
+    "WEBC": { "type": "camera", "simulated": true, "capture_interval": 30 }
   }
 }

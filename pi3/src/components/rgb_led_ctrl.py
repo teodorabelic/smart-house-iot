@@ -14,7 +14,7 @@ class RGBController:
     }
 
     def __init__(self, settings, batch_sender, pi_id, device_name):
-        self.simulate = settings.get('simulate', False)
+        self.simulate = settings.get('simulated', False)
         self.batch_sender = batch_sender
         self.pi_id = pi_id
         self.device_name = device_name

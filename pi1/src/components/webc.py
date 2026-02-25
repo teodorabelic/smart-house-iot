@@ -7,7 +7,7 @@ from simulators.camera import CameraSimulator
 
 
 def run_webc(settings, threads, stop_event, batch_sender, pi_id, device_name):
-    simulated = settings.get('simulate', settings.get('simulated', True))
+    simulated = settings.get('simulated', settings.get('simulated', True))
     interval = float(settings.get('capture_interval', 30))
     resolution = settings.get('resolution', [640, 480])
     storage_path = settings.get('storage_path', '/tmp/camera_captures/')

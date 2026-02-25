@@ -1,8 +1,11 @@
 import time
 from threading import Lock
-import board
-import adafruit_dht
-
+try:
+    import board
+    import adafruit_dht
+except ImportError:
+    board = None
+    adafruit_dht = None
 
 class DHT11Sensor:
     def __init__(self, pin):
