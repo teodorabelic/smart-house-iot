@@ -9,6 +9,7 @@ def run_dpir3(settings, threads, stop_event, batch_sender, pi_id, device_name):
     interval = settings.get('interval', 1)
 
     def cb(value, code):
+        print(f"[{pi_id}] {code} value={bool(value)} simulated={simulated}")
         batch_sender.enqueue({
             '_topic': f'smarthome/{pi_id}/sensors/{code}',
             'pi_id': pi_id,

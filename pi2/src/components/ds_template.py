@@ -9,6 +9,7 @@ def run_button_component(code, settings, threads, stop_event, batch_sender, pi_i
     simulated = settings.get('simulated', False)
 
     def callback(value, c):
+        print(f"[{pi_id}] {c} value={bool(value)} simulated={simulated}")
         batch_sender.enqueue({
             '_topic': f'smarthome/{pi_id}/sensors/{c}',
             'pi_id': pi_id,

@@ -1,5 +1,5 @@
 import json
-from typing import Callable
+from typing import Callable, List, Tuple
 import paho.mqtt.client as mqtt
 
 class MqttClient:
@@ -10,6 +10,8 @@ class MqttClient:
             # mqtt.CallbackAPIVersion.VERSION2,
             client_id=client_id
         )
+        self._handlers: List[Tuple[str, Callable[[str, dict], None]]] = []
+        self.client.on_message = self._dispatch_message
 
     def connect(self):
         self.client.connect(self.host, self.port, keepalive=60)
@@ -26,15 +28,18 @@ class MqttClient:
             retain=retain
         )
 
-    def subscribe_json(self, topic: str, on_message: Callable[[str, dict], None], qos: int = 1):
-        def _on_message(client, userdata, msg):
-            try:
-                data = json.loads(msg.payload.decode("utf-8"))
-            except Exception:
-                data = {"raw": msg.payload.decode("utf-8", errors="ignore")}
-            on_message(msg.topic, data)
+    def _dispatch_message(self, client, userdata, msg):
+        try:
+            data = json.loads(msg.payload.decode("utf-8"))
+        except Exception:
+            data = {"raw": msg.payload.decode("utf-8", errors="ignore")}
 
-        self.client.on_message = _on_message
+        for subscribed_topic, callback in self._handlers:
+            if mqtt.topic_matches_sub(subscribed_topic, msg.topic):
+                callback(msg.topic, data)
+
+    def subscribe_json(self, topic: str, on_message: Callable[[str, dict], None], qos: int = 1):
+        self._handlers.append((topic, on_message))
         self.client.subscribe(topic, qos=qos)
 
     def close(self):

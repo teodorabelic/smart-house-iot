@@ -44,9 +44,12 @@ def main():
     def on_actuator(topic, payload):
         code = topic.split('/')[-2].upper()
         action = str(payload.get('action', '')).lower()
-        if code == '4SD':
-            if action == 'set': timer.seconds = max(0, int(payload.get('seconds', 0))); timer.blinking = False
-            elif action == 'add': timer.add_seconds(int(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30))))
+        if code in {'4SD', 'BTN'}:
+            if action == 'set':
+                timer.seconds = max(0, int(payload.get('seconds', 0)))
+                timer.blinking = False
+            elif action == 'add':
+                timer.add_seconds(int(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30))))
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
