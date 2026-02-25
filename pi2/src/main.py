@@ -41,6 +41,14 @@ def main():
     run_dht3(comps['DHT3'], threads, stop_event, batch_sender, pi_id, device_name)
     run_gyro(comps['GSG'], threads, stop_event, batch_sender, pi_id, device_name)
 
+    def publish_actuator_state(code, state):
+        mqtt.publish_json(
+            f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
+            {"pi_id": pi_id, "code": code, "state": str(state)},
+            qos=mqtt_cfg['qos'],
+            retain=False,
+        )
+
     def on_actuator(topic, payload):
         code = topic.split('/')[-2].upper()
         action = str(payload.get('action', '')).lower()
@@ -48,8 +56,11 @@ def main():
             if action == 'set':
                 timer.seconds = max(0, int(payload.get('seconds', 0)))
                 timer.blinking = False
+                publish_actuator_state('4SD', f"set:{timer.seconds}")
             elif action == 'add':
-                timer.add_seconds(int(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30))))
+                added = int(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30)))
+                timer.add_seconds(added)
+                publish_actuator_state(code, f"add:{added}")
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
