@@ -26,6 +26,7 @@ class RGBController:
         cmd = str(cmd).upper()
         color = self.MAP.get(cmd, (0, 0, 0))
         state = self.driver.set_color(*color)
+        print(f"[{self.pi_id}] BRGB command={cmd} color={state} simulated={self.simulate}")
         self.batch_sender.enqueue({
             '_topic': f'smarthome/{self.pi_id}/sensors/BRGB',
             'pi_id': self.pi_id,

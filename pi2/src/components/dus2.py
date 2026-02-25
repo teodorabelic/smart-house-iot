@@ -9,6 +9,7 @@ def run_dus2(settings, threads, stop_event, batch_sender, pi_id, device_name):
     simulated = settings.get('simulated', False)
 
     def callback(value, code):
+        print(f"[{pi_id}] {code} distance={float(value):.2f}cm simulated={simulated}")
         batch_sender.enqueue({
             '_topic': f'smarthome/{pi_id}/sensors/{code}',
             'pi_id': pi_id,

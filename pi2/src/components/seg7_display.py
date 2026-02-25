@@ -56,6 +56,7 @@ def run_seg7_display(settings, threads, stop_event, batch_sender, pi_id, device_
                 timer.tick()
                 last_tick = time.time()
             state = timer.render(blink_on)
+            print(f"[{pi_id}] 4SD value={state} simulated={timer.simulate}")
             blink_on = not blink_on
             batch_sender.enqueue({
                 '_topic': f'smarthome/{pi_id}/sensors/4SD',

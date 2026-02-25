@@ -14,4 +14,3 @@ opencv-python>=4.7.0
 python-dateutil>=2.8.2
 pytz>=2023.3
 coloredlogs>=15.0.1
-board

@@ -16,6 +16,7 @@ def run_dht_component(code, settings, threads, stop_event, batch_sender, pi_id, 
         while not stop_event.is_set():
             try:
                 data = sensor.read()
+                print(f"[{pi_id}] {code} value={data} simulated={simulated}")
                 if on_value is not None:
                     on_value(code, data)
                 

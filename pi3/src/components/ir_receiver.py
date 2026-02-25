@@ -16,6 +16,7 @@ def run_ir_receiver(settings, threads, stop_event, batch_sender, pi_id, device_n
             raw = sensor.read()
             cmd = raw if isinstance(raw, str) else ('POWER' if raw else 'NONE')
             if cmd != 'NONE':
+                print(f"[{pi_id}] IR command={cmd} simulated={simulated}")
                 on_command(cmd)
                 batch_sender.enqueue({
                     '_topic': f'smarthome/{pi_id}/sensors/IR',

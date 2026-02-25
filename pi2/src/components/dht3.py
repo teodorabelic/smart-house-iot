@@ -17,6 +17,7 @@ def run_dht3(settings, threads, stop_event, batch_sender, pi_id, device_name):
         while not stop_event.is_set():
             try:
                 data = sensor.read()
+                print(f"[{pi_id}] DHT3 value={data} simulated={simulated}")
                 batch_sender.enqueue({
                     '_topic': f'smarthome/{pi_id}/sensors/DHT3',
                     'pi_id': pi_id,

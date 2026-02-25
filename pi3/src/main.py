@@ -31,7 +31,7 @@ def main():
     stop_event = threading.Event()
     threads = []
     comps = settings['components']
-    latest_dht = {'DHT1': None, 'DHT2': None}
+    latest_dht = {'DHT1': None, 'DHT2': None, 'DHT3': None}
 
     def on_dht_value(code, value): latest_dht[code] = value
 
@@ -51,7 +51,13 @@ def main():
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
-    order = ['DHT1', 'DHT2']; idx = [0]
+    def on_remote_dht3(topic, payload):
+        if payload.get('code') == 'DHT3' and isinstance(payload.get('value'), dict):
+            latest_dht['DHT3'] = payload.get('value')
+
+    mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/PI2/sensors/DHT3", on_remote_dht3)
+
+    order = ['DHT1', 'DHT2', 'DHT3']; idx = [0]
     def get_lcd_lines():
         key = order[idx[0] % len(order)]; idx[0] += 1
         v = latest_dht.get(key) or {'temperature': '--', 'humidity': '--'}

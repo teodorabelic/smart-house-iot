@@ -20,6 +20,7 @@ def run_gyro(settings, threads, stop_event, batch_sender, pi_id, device_name):
             try:
                 data = sensor.read()
                 magnitude = abs(data['x']) + abs(data['y']) + abs(data['z'])
+                print(f"[{pi_id}] GSG value={data} significant={magnitude >= threshold} simulated={simulated}")
                 data['significant_movement'] = magnitude >= threshold
                 
                 batch_sender.enqueue({
