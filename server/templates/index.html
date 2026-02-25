@@ -37,12 +37,36 @@
       </div>
     </div>
 
-    <div class="card">
+        <div class="card">
       <h3>BRGB</h3>
       <button onclick="rgb('RED')">Red</button>
       <button onclick="rgb('GREEN')">Green</button>
       <button onclick="rgb('BLUE')">Blue</button>
       <button onclick="rgb('OFF')">Off</button>
+      <button onclick="rgb('WHITE')">White</button>
+      <button onclick="rgb('POWER')">Power</button>
+    </div>
+      <div class="card">
+      <h3>Ručno upravljanje aktuatorima</h3>
+      <div>
+        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'on'})">DL ON</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'off'})">DL OFF</button>
+      </div>
+      <div>
+        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'on'})">DB ON</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'off'})">DB OFF</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'beep'})">DB BEEP</button>
+      </div>
+      <div>
+        <button onclick="post('/api/actuator',{pi_id:'PI2',code:'4SD',action:'set',seconds:Number(val('timer')||0)})">4SD Set (manual)</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI2',code:'BTN',action:'add',seconds:Number(val('btnAdd')||30)})">BTN Add (manual)</button>
+      </div>
+      <div>
+        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'RED'})">BRGB RED</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'GREEN'})">BRGB GREEN</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'BLUE'})">BRGB BLUE</button>
+        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'OFF'})">BRGB OFF</button>
+      </div>
     </div>
   </div>
 

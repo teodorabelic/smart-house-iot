@@ -434,7 +434,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"4SD\")\n  |> last()"
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI2\" and r.code == \"4SD\")\n  |> filter(fn: (r) => r._field == \"state\")\n  |> last()"
         }
       ],
       "fieldConfig": {
@@ -611,7 +611,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"BRGB\")\n  |> last()"
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -6h)\n  |> filter(fn: (r) => r._measurement == \"actuator_events\")\n  |> filter(fn: (r) => r.pi_id == \"PI3\" and r.code == \"BRGB\")\n  |> filter(fn: (r) => r._field == \"state\")\n  |> last()"
         }
       ],
       "fieldConfig": {

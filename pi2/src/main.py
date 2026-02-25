@@ -49,18 +49,24 @@ def main():
             retain=False,
         )
 
+    def set_timer_seconds(seconds):
+        timer.seconds = max(0, int(seconds))
+        timer.blinking = False
+        publish_actuator_state('4SD', f"set:{timer.seconds}")
+
+    def add_timer_seconds(seconds):
+        added = int(seconds)
+        timer.add_seconds(added)
+        publish_actuator_state('4SD', f"add:{added}")
+
     def on_actuator(topic, payload):
         code = topic.split('/')[-2].upper()
         action = str(payload.get('action', '')).lower()
         if code in {'4SD', 'BTN'}:
             if action == 'set':
-                timer.seconds = max(0, int(payload.get('seconds', 0)))
-                timer.blinking = False
-                publish_actuator_state('4SD', f"set:{timer.seconds}")
+                set_timer_seconds(payload.get('seconds', 0))
             elif action == 'add':
-                added = int(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30)))
-                timer.add_seconds(added)
-                publish_actuator_state(code, f"add:{added}")
+                add_timer_seconds(payload.get('seconds', comps['4SD'].get('button_add_seconds', 30)))
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
 
@@ -70,7 +76,7 @@ def main():
             if cmd == 'exit': break
             if cmd.startswith('add'):
                 parts = cmd.split()
-                timer.add_seconds(int(parts[1]) if len(parts) > 1 else 30)
+                add_timer_seconds(int(parts[1]) if len(parts) > 1 else 30)
     except (KeyboardInterrupt, EOFError):
         pass
     finally:

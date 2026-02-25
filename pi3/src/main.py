@@ -41,7 +41,20 @@ def main():
 
     # RGB Controller - On unutar sebe radi setup pinova
     rgb = RGBController(comps['BRGB'], batch_sender, pi_id, device_name)
-    run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, rgb.apply_command)
+    
+    def publish_actuator_state(code, state):
+        mqtt.publish_json(
+            f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
+            {"pi_id": pi_id, "code": code, "state": str(state)},
+            qos=mqtt_cfg['qos'],
+            retain=False,
+        )
+
+    def apply_rgb_command(cmd):
+        rgb.apply_command(cmd)
+        publish_actuator_state('BRGB', str(cmd).upper())
+
+    run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, apply_rgb_command)
 
     def publish_actuator_state(code, state):
         mqtt.publish_json(
@@ -55,7 +68,7 @@ def main():
         code = topic.split('/')[-2].upper()
         if code == 'BRGB':
             cmd = payload.get('action') or payload.get('command') or 'OFF'
-            rgb.apply_command(cmd)
+            apply_rgb_command(cmd)
             publish_actuator_state('BRGB', str(cmd).upper())
 
     mqtt.subscribe_json(f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/+/set", on_actuator)
@@ -78,7 +91,7 @@ def main():
         while not stop_event.is_set():
             cmd = input(f"{pi_id}> ").strip().upper()
             if cmd == 'EXIT': break
-            if cmd.startswith('RGB '): rgb.apply_command(cmd.split()[1])
+            if cmd.startswith('RGB '): apply_rgb_command(cmd.split()[1])
     except (KeyboardInterrupt, EOFError):
         pass
     finally:

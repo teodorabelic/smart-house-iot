@@ -3,7 +3,7 @@ import os
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -51,9 +51,13 @@ system_state = {
 ds_pressed_since = {}
 dus_history = defaultdict(lambda: deque(maxlen=8))
 
+def utc_now():
+    return datetime.now(timezone.utc)
+
+
 
 def now_iso():
-    return datetime.utcnow().isoformat()
+    return utc_now().isoformat()
 
 
 def parse_payload(msg):
@@ -89,9 +93,13 @@ def write_sensor_to_influx(data: dict):
 
     ts = data.get("ts")
     try:
-        dt = datetime.fromisoformat(ts) if ts else datetime.utcnow()
+        dt = datetime.fromisoformat(ts) if ts else utc_now()
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
     except Exception:
-        dt = datetime.utcnow()
+        dt = utc_now()
 
     point = point.time(dt, WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
@@ -104,7 +112,7 @@ def write_actuator_to_influx(data: dict):
         .tag("code", str(data.get("code", "")))
         .field("state", str(data.get("state", "")))
     )
-    point = point.time(datetime.utcnow(), WritePrecision.NS)
+    point = point.time(utc_now(), WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 
 
@@ -121,7 +129,7 @@ def set_alarm(active, reason=""):
         return
     action = "on" if active else "off"
     publish_actuator("PI1", "DB", {"action": action})
-    point = Point("system_events").tag("event", "alarm").field("active", bool(active)).field("reason", reason).time(datetime.utcnow(), WritePrecision.NS)
+    point = Point("system_events").tag("event", "alarm").field("active", bool(active)).field("reason", reason).time(utc_now(), WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 
 
@@ -326,6 +334,31 @@ def api_rgb():
     action = str(data.get("action", "OFF")).upper()
     publish_actuator("PI3", "BRGB", {"action": action})
     return jsonify({"ok": True, "action": action})
+
+@app.post("/api/actuator")
+def api_actuator():
+    data = request.get_json(force=True, silent=True) or {}
+    pi_id = str(data.get("pi_id", "")).upper()
+    code = str(data.get("code", "")).upper()
+    action = data.get("action")
+
+    allowed = {
+        "PI1": {"DL", "DB"},
+        "PI2": {"4SD", "BTN"},
+        "PI3": {"BRGB"},
+    }
+
+    if pi_id not in allowed or code not in allowed[pi_id]:
+        return jsonify({"ok": False, "error": "Unsupported pi_id/code"}), 400
+
+    payload = {"action": action} if action is not None else {}
+    if "seconds" in data:
+        payload["seconds"] = int(data.get("seconds", 0))
+
+    publish_actuator(pi_id, code, payload)
+    return jsonify({"ok": True, "pi_id": pi_id, "code": code, "payload": payload})
+
+
 
 
 if __name__ == "__main__":
