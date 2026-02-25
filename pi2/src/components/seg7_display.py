@@ -57,7 +57,15 @@ def run_seg7_display(settings, threads, stop_event, batch_sender, pi_id, device_
                 last_tick = time.time()
             state = timer.render(blink_on)
             blink_on = not blink_on
-            batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/actuator/4SD/data', 'device_name': device_name, 'component': '4SD', 'value': state, 'simulated': timer.simulate, 'timestamp': datetime.utcnow().isoformat()})
+            batch_sender.enqueue({
+                '_topic': f'smarthome/{pi_id}/sensors/4SD',
+                'pi_id': pi_id,
+                'device_name': device_name,
+                'code': '4SD',
+                'value': state,
+                'simulated': timer.simulate,
+                'ts': datetime.utcnow().isoformat(),
+            })
             stop_event.wait(0.5)
 
     th = threading.Thread(target=loop, daemon=True)

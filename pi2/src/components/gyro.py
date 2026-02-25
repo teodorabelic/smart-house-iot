@@ -15,7 +15,15 @@ def run_gyro(settings, threads, stop_event, batch_sender, pi_id, device_name):
             data = sensor.read()
             magnitude = abs(data['x']) + abs(data['y']) + abs(data['z'])
             data['significant_movement'] = magnitude >= threshold
-            batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/sensor/GSG/data', 'device_name': device_name, 'component': 'GSG', 'value': data, 'simulated': simulated, 'timestamp': datetime.utcnow().isoformat()})
+            batch_sender.enqueue({
+                '_topic': f'smarthome/{pi_id}/sensors/GSG',
+                'pi_id': pi_id,
+                'device_name': device_name,
+                'code': 'GSG',
+                'value': data,
+                'simulated': simulated,
+                'ts': datetime.utcnow().isoformat(),
+            })
             stop_event.wait(interval)
 
     th = threading.Thread(target=loop, daemon=True)

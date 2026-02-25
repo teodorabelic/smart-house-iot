@@ -13,7 +13,15 @@ def run_dht3(settings, threads, stop_event, batch_sender, pi_id, device_name):
         while not stop_event.is_set():
             try:
                 data = sensor.read()
-                batch_sender.enqueue({'_topic': f'smart_home/{pi_id}/sensor/DHT3/data', 'device_name': device_name, 'component': 'DHT3', 'value': data, 'simulated': simulated, 'timestamp': datetime.utcnow().isoformat()})
+                batch_sender.enqueue({
+                    '_topic': f'smarthome/{pi_id}/sensors/DHT3',
+                    'pi_id': pi_id,
+                    'device_name': device_name,
+                    'code': 'DHT3',
+                    'value': data,
+                    'simulated': simulated,
+                    'ts': datetime.utcnow().isoformat(),
+                })
             except Exception:
                 pass
             stop_event.wait(interval)
