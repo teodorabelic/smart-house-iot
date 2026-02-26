@@ -1,100 +1,292 @@
 <!doctype html>
-<html lang="en">
+<html lang="sr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Smart House Control</title>
   <style>
-    body{font-family:Arial,sans-serif;max-width:1000px;margin:20px auto;padding:0 12px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-    .card{border:1px solid #ddd;border-radius:8px;padding:12px}
-    button{margin:4px;padding:6px 10px}
-    input{padding:6px;margin:4px;width:100px}
-    pre{background:#f6f6f6;padding:10px;max-height:340px;overflow:auto}
-    iframe{width:100%;height:420px;border:0}
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1a2233;
+      --muted: #61708a;
+      --border: #d9e2f1;
+      --accent: #2d6cdf;
+      --danger: #d14343;
+      --ok: #168f48;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1180px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+    }
+    h1 { margin: 0 0 8px; }
+    .subtitle { color: var(--muted); margin-bottom: 16px; }
+    .banner {
+      border: 1px solid #f0ce82;
+      background: #fff7e6;
+      color: #8a5b00;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .status-box {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .status-box .label { font-size: 12px; color: var(--muted); }
+    .status-box .value { font-size: 20px; margin-top: 2px; font-weight: 700; }
+    .ok { color: var(--ok); }
+    .danger { color: var(--danger); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: var(--card);
+    }
+
+    .card h3 { margin-top: 0; margin-bottom: 10px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      background: #f0f4fc;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      width: 130px;
+    }
+    pre {
+      background: #f3f6fc;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 320px;
+      overflow: auto;
+      margin: 0;
+    }
+    iframe { width: 100%; height: 420px; border: 0; border-radius: 10px; }
+    #cameraPreview {
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafe;
+      display: none;
+    }
+    .muted { color: var(--muted); font-size: 13px; }
   </style>
 </head>
 <body>
-  <h2>Smart House Dashboard</h2>
-  <div class="grid">
-    <div class="card">
-      <h3>Alarm</h3>
-      <button onclick="post('/api/alarm',{action:'on'})">Alarm ON</button>
-      <button onclick="post('/api/alarm',{action:'off'})">Alarm OFF</button>
-      <div>
-        <input id="pin" placeholder="PIN" />
-        <button onclick="post('/api/pin',{pin:val('pin')})">Unesi PIN</button>
+  <div class="container">
+    <h1>Smart House Dashboard</h1>
+    <div class="subtitle">Upravljanje alarmom, aktuatorima i pregled poslednjeg stanja sistema.</div>
+
+    <div class="banner" id="runtimeBanner"></div>
+
+    <div class="status-grid">
+      <div class="status-box">
+        <div class="label">Alarm</div>
+        <div id="alarmState" class="value">-</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Sistem</div>
+        <div id="armState" class="value">-</div>
+      </div>
+      <div class="status-box">
+        <div class="label">Broj osoba</div>
+        <div id="personsCount" class="value">0</div>
+      </div>
+      <div class="status-box">
+        <div class="label">BTN +N</div>
+        <div id="btnN" class="value">30s</div>
       </div>
     </div>
 
-    <div class="card">
-      <h3>Kuhinjski tajmer (4SD)</h3>
-      <input id="timer" type="number" placeholder="sekunde" />
-      <button onclick="post('/api/timer',{seconds:Number(val('timer')||0)})">Set</button>
-      <div>
-        <input id="btnAdd" type="number" placeholder="BTN +N" />
-        <button onclick="post('/api/timer/add-seconds',{seconds:Number(val('btnAdd')||30)})">Sačuvaj BTN +N</button>
-      </div>
-    </div>
-
-        <div class="card">
-      <h3>BRGB</h3>
-      <button onclick="rgb('RED')">Red</button>
-      <button onclick="rgb('GREEN')">Green</button>
-      <button onclick="rgb('BLUE')">Blue</button>
-      <button onclick="rgb('OFF')">Off</button>
-      <button onclick="rgb('WHITE')">White</button>
-      <button onclick="rgb('POWER')">Power</button>
-    </div>
+    <div class="grid">
       <div class="card">
-      <h3>Ručno upravljanje aktuatorima</h3>
-      <div>
-        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'on'})">DL ON</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'off'})">DL OFF</button>
+        <h3>Alarm i PIN</h3>
+        <div class="row">
+          <button class="primary" onclick="post('/api/alarm',{action:'on'})">Alarm ON</button>
+          <button onclick="post('/api/alarm',{action:'off'})">Alarm OFF</button>
+        </div>
+        <div class="row">
+          <input id="pin" placeholder="PIN" />
+          <button onclick="post('/api/pin',{pin:val('pin')})">Unesi PIN</button>
+        </div>
       </div>
-      <div>
-        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'on'})">DB ON</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'off'})">DB OFF</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'beep'})">DB BEEP</button>
+
+        <h3>Kuhinjski tajmer (4SD)</h3>
+        <div class="row">
+          <input id="timer" type="number" value="0" />
+          <button onclick="post('/api/timer',{seconds:Number(val('timer')||0)})">Set</button>
+        </div>
+        <div class="row">
+          <input id="btnAdd" type="number" value="30" />
+          <button onclick="post('/api/timer/add-seconds',{seconds:Number(val('btnAdd')||30)})">Sačuvaj BTN +N</button>
+        </div>
       </div>
-      <div>
-        <button onclick="post('/api/actuator',{pi_id:'PI2',code:'4SD',action:'set',seconds:Number(val('timer')||0)})">4SD Set (manual)</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI2',code:'BTN',action:'add',seconds:Number(val('btnAdd')||30)})">BTN Add (manual)</button>
+
+      <div class="card">
+        <h3>BRGB</h3>
+        <div class="row">
+          <button onclick="rgb('RED')">Red</button>
+          <button onclick="rgb('GREEN')">Green</button>
+          <button onclick="rgb('BLUE')">Blue</button>
+          <button onclick="rgb('WHITE')">White</button>
+          <button onclick="rgb('POWER')">Power</button>
+          <button onclick="rgb('OFF')">Off</button>
+        </div>
       </div>
-      <div>
-        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'RED'})">BRGB RED</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'GREEN'})">BRGB GREEN</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'BLUE'})">BRGB BLUE</button>
-        <button onclick="post('/api/actuator',{pi_id:'PI3',code:'BRGB',action:'OFF'})">BRGB OFF</button>
+
+      <div class="card">
+        <h3>Ručno upravljanje aktuatorima</h3>
+        <div class="row">
+          <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'on'})">DL ON</button>
+          <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DL',action:'off'})">DL OFF</button>
+        </div>
+        <div class="row">
+          <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'on'})">DB ON</button>
+          <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'off'})">DB OFF</button>
+          <button onclick="post('/api/actuator',{pi_id:'PI1',code:'DB',action:'beep'})">DB BEEP</button>
+        </div>
+        <div class="row">
+          <button onclick="post('/api/actuator',{pi_id:'PI2',code:'4SD',action:'set',seconds:Number(val('timer')||0)})">4SD Set</button>
+          <button onclick="post('/api/actuator',{pi_id:'PI2',code:'BTN',action:'add',seconds:Number(val('btnAdd')||30)})">BTN Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Door kamera (WEBC)</h3>
+        <img id="cameraPreview" alt="Poslednji frame sa WEBC" />
+        <div id="cameraMeta" class="muted">Nema podataka sa kamere.</div>
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h3>Trenutno stanje sistema</h3>
-    <pre id="state">Loading...</pre>
-  </div>
+    <div class="card" style="margin-top: 12px;">
+      <h3>Trenutno stanje sistema</h3>
+      <pre id="state">Loading...</pre>
+    </div>
 
-  {% if grafana_embed %}
-  <div class="card">
-    <h3>Grafana</h3>
-    <iframe src="{{ grafana_embed }}"></iframe>
+    {% if grafana_embed %}
+    <div class="card" style="margin-top: 12px;">
+      <h3>Grafana</h3>
+      <iframe src="{{ grafana_embed }}"></iframe>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
 
 <script>
 const val = id => document.getElementById(id).value;
+const banner = document.getElementById('runtimeBanner');
+
+function showBanner(msg) {
+  banner.style.display = 'block';
+  banner.textContent = msg;
+}
+
+if (location.protocol === 'file:') {
+  showBanner('Otvorio si template kao file://. Pokreni Flask server i otvori http://localhost:5050 da bi Jinja i API radili.');
+}
+
 async function post(url, body){
-  await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const response = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (!response.ok) {
+    const text = await response.text();
+    showBanner(`API greška (${response.status}): ${text}`);
+  }
   await loadState();
 }
+
 function rgb(action){ post('/api/rgb',{action}); }
-async function loadState(){
-  const r = await fetch('/api/state');
-  const j = await r.json();
-  document.getElementById('state').textContent = JSON.stringify(j,null,2);
+
+function updateSystemOverview(system) {
+  const alarmNode = document.getElementById('alarmState');
+  const armNode = document.getElementById('armState');
+
+  const alarmActive = !!system.alarm_active;
+  alarmNode.textContent = alarmActive ? 'AKTIVAN' : 'OFF';
+  alarmNode.className = `value ${alarmActive ? 'danger' : 'ok'}`;
+
+  const armed = !!system.system_armed;
+  armNode.textContent = armed ? 'ARMED' : 'DISARMED';
+  armNode.className = `value ${armed ? 'danger' : 'ok'}`;
+
+  document.getElementById('personsCount').textContent = String(system.persons_count ?? 0);
+  document.getElementById('btnN').textContent = `${system.timer_add_seconds ?? 30}s`;
 }
-setInterval(loadState, 2000); loadState();
+
+async function loadState(){
+  try {
+    const r = await fetch('/api/state');
+    const j = await r.json();
+    updateSystemOverview(j.system || {});
+    document.getElementById('state').textContent = JSON.stringify(j,null,2);
+  } catch (err) {
+    showBanner(`Ne mogu da učitam /api/state: ${err.message}`);
+  }
+}
+
+async function loadCamera() {
+  try {
+    const r = await fetch('/api/camera/latest');
+    const data = await r.json();
+    if (!r.ok) {
+      document.getElementById('cameraMeta').textContent = data.error || 'Nema podataka sa kamere.';
+      return;
+    }
+    const value = (data.camera && data.camera.value) || {};
+    const meta = `Poslednji frame: ${value.timestamp || 'n/a'} | fajl: ${value.filename || 'n/a'}`;
+    document.getElementById('cameraMeta').textContent = meta;
+
+    const img = document.getElementById('cameraPreview');
+    if (data.image_url) {
+      img.style.display = 'block';
+      img.src = `${data.image_url}&t=${Date.now()}`;
+    } else {
+      img.style.display = 'none';
+    }
+  } catch (_) {
+    document.getElementById('cameraMeta').textContent = 'Kamera nije dostupna.';
+  }
+}
+
+setInterval(() => { loadState(); loadCamera(); }, 2000);
+loadState();
+loadCamera();
 </script>
 </body>
 </html>

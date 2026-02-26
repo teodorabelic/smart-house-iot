@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 
 import paho.mqtt.client as mqtt
 from influxdb_client import InfluxDBClient, Point, WritePrecision
@@ -29,6 +29,11 @@ PI_ID_FILTERS = {
 }
 WEB_PIN = os.getenv("ALARM_PIN", "1234")
 GRAFANA_EMBED_URL = os.getenv("GRAFANA_EMBED_URL", "")
+CAMERA_ALLOWED_ROOTS = [
+    os.path.abspath(path.strip())
+    for path in os.getenv("CAMERA_ALLOWED_ROOTS", "/tmp/camera_captures,/workspace").split(",")
+    if path.strip()
+]
 
 app = Flask(__name__)
 
@@ -235,6 +240,12 @@ def on_message(client, userdata, msg):
         with state_lock:
             latest_state[payload["code"]] = payload
         handle_sensor_logic(pi_id, payload["code"], payload.get("value"))
+    elif len(parts) >= 5 and parts[2] == "camera":
+        payload.setdefault("pi_id", pi_id)
+        payload.setdefault("code", parts[3])
+        payload.setdefault("ts", now_iso())
+        with state_lock:
+            latest_state[f"CAM_{parts[3]}"] = payload
     elif len(parts) >= 5 and parts[2] == "actuators" and parts[4] == "state":
         payload.setdefault("pi_id", pi_id)
         payload.setdefault("code", parts[3])
@@ -283,6 +294,40 @@ def health():
 def api_state():
     with state_lock:
         return jsonify({"system": system_state, "latest": latest_state})
+    
+
+def _is_allowed_camera_path(path: str) -> bool:
+    absolute = os.path.abspath(path)
+    return any(absolute == root or absolute.startswith(f"{root}{os.sep}") for root in CAMERA_ALLOWED_ROOTS)
+
+
+@app.get("/api/camera/latest")
+def api_camera_latest():
+    with state_lock:
+        camera_state = latest_state.get("CAM_WEBC")
+    if not camera_state:
+        return jsonify({"ok": False, "error": "No camera frame received yet."}), 404
+
+    value = camera_state.get("value") if isinstance(camera_state, dict) else None
+    frame_path = value.get("filename") if isinstance(value, dict) else None
+
+    image_url = None
+    if frame_path and _is_allowed_camera_path(frame_path) and os.path.exists(frame_path):
+        image_url = f"/api/camera/frame?path={frame_path}"
+
+    return jsonify({"ok": True, "camera": camera_state, "image_url": image_url})
+
+
+@app.get("/api/camera/frame")
+def api_camera_frame():
+    frame_path = request.args.get("path", "")
+    if not frame_path:
+        return jsonify({"ok": False, "error": "Missing path query param."}), 400
+    if not _is_allowed_camera_path(frame_path):
+        return jsonify({"ok": False, "error": "Path is outside allowed roots."}), 403
+    if not os.path.exists(frame_path):
+        return jsonify({"ok": False, "error": "Frame not found."}), 404
+    return send_file(frame_path)
 
 
 @app.post("/api/alarm")
