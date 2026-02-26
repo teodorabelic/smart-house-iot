@@ -110,3 +110,26 @@ Omogućeno:
 - `PI_ID_FILTER=PI1,PI3` -> upisuje PI1 i PI3
 
 Ako u Influx-u vidiš samo PI1 u tag vrednostima, proveri da filter nije zakucan na `PI1` i restartuj `server/app.py`.
+
+## WEBC na fizickom Raspberry Pi
+
+Za fizicki rad kamere na PI1:
+
+1. Omoguci kameru:
+```bash
+sudo raspi-config
+# Interface Options -> Camera -> Enable
+sudo reboot
+```
+
+2. Instaliraj backend(e) za kameru (jedan je dovoljan, preporuka picamera2):
+```bash
+sudo apt update
+sudo apt install -y python3-picamera2 libcamera-apps python3-opencv
+```
+
+3. U `pi1/src/settings.json` postavi:
+- `components.WEBC.simulated = false`
+- `storage_path = "/tmp/camera_captures/"`
+
+4. Pokreni `python pi1/src/main.py` i proveri da u logu za WEBC stizu frame-ovi sa `backend` poljem (`picamera2`, `opencv` ili `libcamera-still`).

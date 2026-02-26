@@ -4,9 +4,10 @@ import threading
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file
 
 import paho.mqtt.client as mqtt
 from influxdb_client import InfluxDBClient, Point, WritePrecision
@@ -28,6 +29,7 @@ PI_ID_FILTERS = {
     if item.strip()
 }
 WEB_PIN = os.getenv("ALARM_PIN", "1234")
+ARM_DS_PIN_GRACE_SEC = int(os.getenv("ARM_DS_PIN_GRACE_SEC", "10"))
 GRAFANA_EMBED_URL = os.getenv("GRAFANA_EMBED_URL", "")
 CAMERA_ALLOWED_ROOTS = [
     os.path.abspath(path.strip())
@@ -55,6 +57,8 @@ system_state = {
 
 ds_pressed_since = {}
 dus_history = defaultdict(lambda: deque(maxlen=8))
+ds_armed_pending_until = {}
+active_alarm_reasons = set()
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -127,14 +131,25 @@ def publish_actuator(pi_id, code, payload):
 
 
 def set_alarm(active, reason=""):
+    reason = str(reason or "").strip()
     with state_lock:
-        changed = system_state["alarm_active"] != bool(active)
-        system_state["alarm_active"] = bool(active)
+        if active:
+            active_alarm_reasons.add(reason or "unknown")
+        else:
+            # Manual OFF/PIN OFF treba da ugase sve razloge alarma.
+            if reason in {"web_manual", "web_pin_ok", "pin_ok"} or not reason:
+                active_alarm_reasons.clear()
+            else:
+                active_alarm_reasons.discard(reason)
+
+        next_active = bool(active_alarm_reasons)
+        changed = system_state["alarm_active"] != next_active
+        system_state["alarm_active"] = next_active
     if not changed:
         return
-    action = "on" if active else "off"
+    action = "on" if system_state["alarm_active"] else "off"
     publish_actuator("PI1", "DB", {"action": action})
-    point = Point("system_events").tag("event", "alarm").field("active", bool(active)).field("reason", reason).time(utc_now(), WritePrecision.NS)
+    point = Point("system_events").tag("event", "alarm").field("active", bool(system_state["alarm_active"])).field("reason", reason).time(utc_now(), WritePrecision.NS)
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 
 
@@ -153,11 +168,17 @@ def handle_sensor_logic(pi_id, code, value):
             ds_pressed_since[code] = now
         if not pressed:
             ds_pressed_since.pop(code, None)
+            ds_armed_pending_until.pop(code, None)
+            set_alarm(False, f"{code}_open_over_5s")
             return
         if now - ds_pressed_since.get(code, now) >= 5:
             set_alarm(True, f"{code}_open_over_5s")
         if system_state.get("system_armed"):
-            set_alarm(True, f"{code}_trigger_when_armed")
+            deadline = ds_armed_pending_until.get(code)
+            if deadline is None:
+                ds_armed_pending_until[code] = now + ARM_DS_PIN_GRACE_SEC
+            elif now >= deadline:
+                set_alarm(True, f"{code}_trigger_when_armed")
 
     if code == "DMS":
         k = str(value)
@@ -167,10 +188,11 @@ def handle_sensor_logic(pi_id, code, value):
                 current = system_state["pin_buffer"]
             if current == system_state["pin"]:
                 with state_lock:
-                    if system_state["alarm_active"]:
+                    if system_state["alarm_active"] or system_state["system_armed"] or system_state["arm_at"] is not None:
                         system_state["system_armed"] = False
                         system_state["arm_at"] = None
                         system_state["pin_buffer"] = ""
+                        ds_armed_pending_until.clear()
                         disable = True
                     else:
                         system_state["arm_at"] = now + 10
@@ -219,6 +241,7 @@ mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="server-subscrib
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         client.subscribe(f"{BASE_TOPIC}/+/sensors/#", qos=1)
+        client.subscribe(f"{BASE_TOPIC}/+/camera/#", qos=1)
         client.subscribe(f"{BASE_TOPIC}/+/actuators/+/state", qos=1)
 
 
@@ -300,6 +323,16 @@ def _is_allowed_camera_path(path: str) -> bool:
     absolute = os.path.abspath(path)
     return any(absolute == root or absolute.startswith(f"{root}{os.sep}") for root in CAMERA_ALLOWED_ROOTS)
 
+def _camera_mime_from_path(path: str) -> str:
+    lower = str(path).lower()
+    if lower.endswith(".png"):
+        return "image/png"
+    if lower.endswith(".jpg") or lower.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower.endswith(".bmp"):
+        return "image/bmp"
+    return "application/octet-stream"
+
 
 @app.get("/api/camera/latest")
 def api_camera_latest():
@@ -313,7 +346,7 @@ def api_camera_latest():
 
     image_url = None
     if frame_path and _is_allowed_camera_path(frame_path) and os.path.exists(frame_path):
-        image_url = f"/api/camera/frame?path={frame_path}"
+        image_url = f"/api/camera/frame?path={quote(frame_path, safe='')}"
 
     return jsonify({"ok": True, "camera": camera_state, "image_url": image_url})
 
@@ -327,7 +360,51 @@ def api_camera_frame():
         return jsonify({"ok": False, "error": "Path is outside allowed roots."}), 403
     if not os.path.exists(frame_path):
         return jsonify({"ok": False, "error": "Frame not found."}), 404
-    return send_file(frame_path)
+    mimetype = _camera_mime_from_path(frame_path)
+    return send_file(frame_path, mimetype=mimetype)
+
+
+@app.get("/api/camera/stream")
+def api_camera_stream():
+    def frame_generator():
+        last_key = None
+        while True:
+            with state_lock:
+                camera_state = latest_state.get("CAM_WEBC")
+
+            value = camera_state.get("value") if isinstance(camera_state, dict) else None
+            frame_path = value.get("filename") if isinstance(value, dict) else None
+
+            if not frame_path or not _is_allowed_camera_path(frame_path) or not os.path.exists(frame_path):
+                time.sleep(0.5)
+                continue
+
+            try:
+                mtime = os.path.getmtime(frame_path)
+                key = (frame_path, mtime)
+                if key == last_key:
+                    time.sleep(0.2)
+                    continue
+
+                with open(frame_path, "rb") as frame_file:
+                    image_bytes = frame_file.read()
+
+                last_key = key
+                content_type = _camera_mime_from_path(frame_path)
+                yield (
+                    b"--frame\r\n"
+                    + f"Content-Type: {content_type}\r\n".encode("utf-8")
+                    + b"Cache-Control: no-cache\r\n\r\n"
+                    + image_bytes
+                    + b"\r\n"
+                )
+            except Exception:
+                time.sleep(0.5)
+
+    return Response(
+        frame_generator(),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 @app.post("/api/alarm")

@@ -9,6 +9,13 @@
     "DUS1": { "simulated": true, "trig_pin": 23, "echo_pin": 24, "interval": 1 },
     "DL": { "simulated": true, "pin": 5 },
     "DB": { "simulated": true, "pin": 16 },
-    "WEBC": { "type": "camera", "simulated": true, "capture_interval": 30 }
+    "WEBC": {
+      "type": "camera",
+      "simulated": true,
+      "capture_interval": 5,
+      "resolution": [640, 480],
+      "storage_path": "/tmp/camera_captures/",
+      "restart_on_error_sec": 2
+    }
   }
 }

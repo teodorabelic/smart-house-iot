@@ -60,7 +60,15 @@ def main():
     try:
         while not stop_event.is_set():
             cmd = input(f"{pi_id}> ").strip().lower()
-            if cmd == 'exit': break
+
+            if not cmd:
+                continue
+            if cmd == "help":
+                print("Commands: help | dl on|off|toggle | db on|off|beep [n] [duration] [pitch] | exit")
+                continue
+            if cmd == "exit":
+                break
+            controller.handle_command(cmd)
     except (KeyboardInterrupt, EOFError):
         pass
     finally:

@@ -108,6 +108,58 @@
       display: none;
     }
     .muted { color: var(--muted); font-size: 13px; }
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .state-group {
+      margin-bottom: 14px;
+    }
+    .state-group-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+    .state-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 10px;
+    }
+    .state-item .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .state-item .code {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .state-item .val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #eef3fb;
+      border-radius: 8px;
+      padding: 8px;
+      margin: 6px 0 4px;
+    }
+    .state-item .meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +201,7 @@
         </div>
       </div>
 
+      <div class="card">
         <h3>Kuhinjski tajmer (4SD)</h3>
         <div class="row">
           <input id="timer" type="number" value="0" />
@@ -198,7 +251,11 @@
 
     <div class="card" style="margin-top: 12px;">
       <h3>Trenutno stanje sistema</h3>
-      <pre id="state">Loading...</pre>
+      <div class="toggle-row">
+        <button id="toggleRawBtn" onclick="toggleRawState()">Prikaži RAW JSON</button>
+      </div>
+      <div id="stateCards" class="state-grid"></div>
+      <pre id="state" style="display:none;">Loading...</pre>
     </div>
 
     {% if grafana_embed %}
@@ -249,11 +306,88 @@ function updateSystemOverview(system) {
   document.getElementById('btnN').textContent = `${system.timer_add_seconds ?? 30}s`;
 }
 
+function prettyValue(v){
+  if (v === null || v === undefined) return '-';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'number') return String(Math.round(v * 100) / 100);
+  if (typeof v === 'string') return v;
+  try { return JSON.stringify(v, null, 2); } catch (_) { return String(v); }
+}
+
+function tsShort(ts){
+  if (!ts) return 'n/a';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return String(ts);
+  return d.toLocaleString();
+}
+
+function normalizeEntries(latest){
+  return Object.entries(latest || {}).map(([key, entry]) => {
+    const e = entry || {};
+    return {
+      key,
+      pi: e.pi_id || '-',
+      code: e.code || key,
+      device: e.device_name || '-',
+      simulated: (typeof e.simulated === 'boolean') ? e.simulated : null,
+      ts: e.ts || null,
+      value: ('state' in e) ? e.state : e.value
+    };
+  }).sort((a, b) => `${a.pi}-${a.code}`.localeCompare(`${b.pi}-${b.code}`));
+}
+
+function renderStateCards(latest){
+  const root = document.getElementById('stateCards');
+  const rows = normalizeEntries(latest);
+  if (!rows.length){
+    root.innerHTML = '<div class="muted">Nema podataka.</div>';
+    return;
+  }
+
+  const grouped = rows.reduce((acc, r) => {
+    const key = r.pi || '-';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(r);
+    return acc;
+  }, {});
+
+  const orderedPis = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+  root.innerHTML = orderedPis.map(pi => {
+    const cards = grouped[pi].map(r => `
+      <div class="state-item">
+        <div class="top">
+          <span class="code">${r.code}</span>
+          <span>${r.pi}</span>
+        </div>
+        <div class="meta">Uređaj: ${r.device}</div>
+        <div class="val">${prettyValue(r.value)}</div>
+        <div class="meta">Simulacija: ${r.simulated === null ? 'n/a' : (r.simulated ? 'DA' : 'NE')}</div>
+        <div class="meta">Poslednji update: ${tsShort(r.ts)}</div>
+      </div>
+    `).join('');
+    return `
+      <section class="state-group">
+        <h4 class="state-group-title">${pi}</h4>
+        <div class="state-grid">${cards}</div>
+      </section>
+    `;
+  }).join('');
+}
+
+function toggleRawState(){
+  const pre = document.getElementById('state');
+  const btn = document.getElementById('toggleRawBtn');
+  const open = pre.style.display !== 'none';
+  pre.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Prikaži RAW JSON' : 'Sakrij RAW JSON';
+}
+
 async function loadState(){
   try {
     const r = await fetch('/api/state');
     const j = await r.json();
     updateSystemOverview(j.system || {});
+    renderStateCards(j.latest || {});
     document.getElementById('state').textContent = JSON.stringify(j,null,2);
   } catch (err) {
     showBanner(`Ne mogu da učitam /api/state: ${err.message}`);
@@ -264,23 +398,33 @@ async function loadCamera() {
   try {
     const r = await fetch('/api/camera/latest');
     const data = await r.json();
+    const img = document.getElementById('cameraPreview');
+
     if (!r.ok) {
       document.getElementById('cameraMeta').textContent = data.error || 'Nema podataka sa kamere.';
+      img.style.display = 'none';
       return;
     }
     const value = (data.camera && data.camera.value) || {};
     const meta = `Poslednji frame: ${value.timestamp || 'n/a'} | fajl: ${value.filename || 'n/a'}`;
     document.getElementById('cameraMeta').textContent = meta;
 
-    const img = document.getElementById('cameraPreview');
-    if (data.image_url) {
-      img.style.display = 'block';
-      img.src = `${data.image_url}&t=${Date.now()}`;
-    } else {
-      img.style.display = 'none';
+    img.style.display = 'block';
+    if (!img.dataset.streamAttached) {
+      img.onerror = () => {
+        if (data.image_url) {
+          const sep = data.image_url.includes('?') ? '&' : '?';
+          img.src = `${data.image_url}${sep}t=${Date.now()}`;
+        } else {
+          img.style.display = 'none';
+        }
+      };
+      img.src = `/api/camera/stream?t=${Date.now()}`;
+      img.dataset.streamAttached = '1';
     }
   } catch (_) {
     document.getElementById('cameraMeta').textContent = 'Kamera nije dostupna.';
+    document.getElementById('cameraPreview').style.display = 'none';
   }
 }
 
