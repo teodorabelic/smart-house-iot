@@ -193,7 +193,7 @@
         <h3>Alarm i PIN</h3>
         <div class="row">
           <button class="primary" onclick="post('/api/alarm',{action:'on'})">Alarm ON</button>
-          <button onclick="post('/api/alarm',{action:'off'})">Alarm OFF</button>
+          <button onclick="post('/api/alarm',{action:'off', pin:val('pin')})">Alarm OFF</button>
         </div>
         <div class="row">
           <input id="pin" placeholder="PIN" />

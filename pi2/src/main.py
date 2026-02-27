@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime
 try:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
@@ -42,9 +43,17 @@ def main():
     run_gyro(comps['GSG'], threads, stop_event, batch_sender, pi_id, device_name)
 
     def publish_actuator_state(code, state):
+        cfg = comps.get(code, {})
         mqtt.publish_json(
             f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
-            {"pi_id": pi_id, "code": code, "state": str(state)},
+            {
+                "pi_id": pi_id,
+                "device_name": device_name,
+                "code": code,
+                "state": str(state),
+                "simulated": bool(cfg.get('simulated', True)),
+                "ts": datetime.utcnow().isoformat(),
+            },
             qos=mqtt_cfg['qos'],
             retain=False,
         )

@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime
 try:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
@@ -43,9 +44,17 @@ def main():
     rgb = RGBController(comps['BRGB'], batch_sender, pi_id, device_name)
     
     def publish_actuator_state(code, state):
+        cfg = comps.get(code, {})
         mqtt.publish_json(
             f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
-            {"pi_id": pi_id, "code": code, "state": str(state)},
+            {
+                "pi_id": pi_id,
+                "device_name": device_name,
+                "code": code,
+                "state": str(state),
+                "simulated": bool(cfg.get('simulated', True)),
+                "ts": datetime.utcnow().isoformat(),
+            },
             qos=mqtt_cfg['qos'],
             retain=False,
         )
@@ -56,13 +65,6 @@ def main():
 
     run_ir_receiver(comps['IR'], threads, stop_event, batch_sender, pi_id, device_name, apply_rgb_command)
 
-    def publish_actuator_state(code, state):
-        mqtt.publish_json(
-            f"{mqtt_cfg['base_topic']}/{pi_id}/actuators/{code}/state",
-            {"pi_id": pi_id, "code": code, "state": str(state)},
-            qos=mqtt_cfg['qos'],
-            retain=False,
-        )
 
     def on_actuator(topic, payload):
         code = topic.split('/')[-2].upper()
