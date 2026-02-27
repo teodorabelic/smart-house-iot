@@ -406,21 +406,35 @@ async function loadCamera() {
       return;
     }
     const value = (data.camera && data.camera.value) || {};
-    const meta = `Poslednji frame: ${value.timestamp || 'n/a'} | fajl: ${value.filename || 'n/a'}`;
+    const backend = value.backend || 'n/a';
+    const source = value.stream_url || value.filename || 'n/a';
+    const meta = `Kamera: ${backend} | update: ${value.timestamp || 'n/a'} | izvor: ${source}`;
     document.getElementById('cameraMeta').textContent = meta;
+
+    if (!data.image_url) {
+      img.style.display = 'none';
+      return;
+    }
 
     img.style.display = 'block';
     if (!img.dataset.streamAttached) {
+      img.dataset.streamAttached = '1';
       img.onerror = () => {
-        if (data.image_url) {
-          const sep = data.image_url.includes('?') ? '&' : '?';
-          img.src = `${data.image_url}${sep}t=${Date.now()}`;
-        } else {
-          img.style.display = 'none';
+        if (img.dataset.currentImageUrl && img.dataset.currentImageUrl.startsWith('/api/')) {
+          const sep = img.dataset.currentImageUrl.includes('?') ? '&' : '?';
+          img.src = `${img.dataset.currentImageUrl}${sep}t=${Date.now()}`;
         }
       };
-      img.src = `/api/camera/stream?t=${Date.now()}`;
-      img.dataset.streamAttached = '1';
+    }
+
+    if (img.dataset.currentImageUrl !== data.image_url) {
+      img.dataset.currentImageUrl = data.image_url;
+      if (data.image_url.startsWith('/api/')) {
+        const sep = data.image_url.includes('?') ? '&' : '?';
+        img.src = `${data.image_url}${sep}t=${Date.now()}`;
+      } else {
+        img.src = data.image_url;
+      }
     }
   } catch (_) {
     document.getElementById('cameraMeta').textContent = 'Kamera nije dostupna.';

@@ -12,10 +12,15 @@
     "WEBC": {
       "type": "camera",
       "simulated": true,
+      "mode": "mjpg_streamer",
       "capture_interval": 5,
       "resolution": [640, 480],
       "storage_path": "/tmp/camera_captures/",
-      "restart_on_error_sec": 2
+      "restart_on_error_sec": 2,
+      "stream_command": "mjpg_streamer -i \"input_uvc.so\" -o \"output_http.so -p 8080 -w /usr/local/share/mjpg-streamer/www\"",
+      "stream_port": 8080,
+      "stream_path": "/?action=stream",
+      "stream_host": ""
     }
   }
 }

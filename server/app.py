@@ -343,9 +343,12 @@ def api_camera_latest():
 
     value = camera_state.get("value") if isinstance(camera_state, dict) else None
     frame_path = value.get("filename") if isinstance(value, dict) else None
+    stream_url = value.get("stream_url") if isinstance(value, dict) else None
 
     image_url = None
-    if frame_path and _is_allowed_camera_path(frame_path) and os.path.exists(frame_path):
+    if stream_url:
+        image_url = stream_url
+    elif frame_path and _is_allowed_camera_path(frame_path) and os.path.exists(frame_path):
         image_url = f"/api/camera/frame?path={quote(frame_path, safe='')}"
 
     return jsonify({"ok": True, "camera": camera_state, "image_url": image_url})
