@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class ActuatorController:
     def __init__(self, settings, pi_id, base_topic, mqtt, qos=1, led=None, buzzer=None):
         self.settings = settings
@@ -7,6 +10,8 @@ class ActuatorController:
         self.qos = qos
         self.led = led
         self.buzzer = buzzer
+        self.device_name = settings.get("device", {}).get("name", "")
+        self.components = settings.get("components", {})
 
     def handle_command(self, cmd: str):
         parts = cmd.split()
@@ -79,12 +84,17 @@ class ActuatorController:
         # Publish state update
         state_topic = topic.replace("/set", "/state")
 
+        code = topic.split("/")[-2]
+        cfg = self.components.get(code, {})
         self.mqtt.publish_json(
             state_topic,
             {
                 "pi_id": self.pi_id,
-                "code": topic.split("/")[-2],
-                "state": action
+                "device_name": self.device_name,
+                "code": code,
+                "state": action,
+                "simulated": bool(cfg.get("simulated", True)),
+                "ts": datetime.utcnow().isoformat(),
             },
             qos=self.qos
         )

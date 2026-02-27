@@ -417,7 +417,10 @@ def api_alarm():
     if action == "on":
         set_alarm(True, "web_manual")
     elif action == "off":
-        set_alarm(False, "web_manual")
+        pin = str(data.get("pin", ""))
+        if pin != system_state["pin"]:
+            return jsonify({"ok": False, "error": "PIN required to disable alarm"}), 403
+        set_alarm(False, "web_pin_ok")
         with state_lock:
             system_state["system_armed"] = False
             system_state["arm_at"] = None
