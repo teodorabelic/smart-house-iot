@@ -66,7 +66,3 @@ python server/app.py
 The web interface is available at `http://localhost:5050`, and Grafana at `http://localhost:3000`.
 
 The full system requires the appropriate Raspberry Pi hardware and configuration.
-
-## Project Type
-
-Team project developed as part of university coursework.
