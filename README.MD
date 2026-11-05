@@ -1,135 +1,72 @@
 # Smart House IoT
 
-## Pokretanje
+A team-developed smart home system built using Raspberry Pi devices, Python, and MQTT communication. The project integrates sensors, actuators, data collection, monitoring, and a web-based control interface.
+
+## Features
+
+- Integration of sensors and actuators across three Raspberry Pi devices.
+- MQTT-based communication between devices and the central server.
+- Alarm activation, deactivation, and PIN-based control.
+- Kitchen timer configuration and RGB lighting control.
+- Real-time device status monitoring through a Flask web interface.
+- Sensor data storage and visualization using InfluxDB and Grafana.
+- Docker-based infrastructure for MQTT, database, and monitoring services.
+
+## Technologies
+
+**Hardware:** Raspberry Pi, sensors, actuators
+
+**Backend:** Python, Flask
+
+**Communication:** MQTT, Eclipse Mosquitto
+
+**Database & Monitoring:** InfluxDB, Grafana
+
+**Infrastructure:** Docker, Docker Compose
+
+## System Architecture
+
+The system consists of three Raspberry Pi devices communicating with a central MQTT broker.
+
+1. Raspberry Pi devices collect sensor readings and publish device events through MQTT.
+2. Eclipse Mosquitto manages communication between devices and the server.
+3. The Python/Flask server processes incoming events and stores sensor data in InfluxDB.
+4. Grafana dashboards visualize collected data.
+5. The web interface provides device monitoring and control functionality.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3
+- Docker and Docker Compose
+- Raspberry Pi devices and the required hardware components for full functionality
+
+### Configuration
+
+Copy `.env.example` to `.env` and configure the required environment variables. Never commit real credentials or tokens.
+
+### Start infrastructure
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-Zatim pokrenuti procese (u odvojenim terminalima):
+### Start application processes
+
+Run each process in a separate terminal:
 
 ```bash
-python3 pi1/src/main.py
-python3 pi2/src/main.py
-python3 pi3/src/main.py
-python3 server/app.py
+python pi1/src/main.py
+python pi2/src/main.py
+python pi3/src/main.py
+python server/app.py
 ```
 
-## Usklađivanje Influx/Grafana parametara (bitno)
+The web interface is available at `http://localhost:5050`, and Grafana at `http://localhost:3000`.
 
-Da ne bi bilo razlike između `server/.env`, `docker-compose.yaml` i Grafana datasource-a:
+The full system requires the appropriate Raspberry Pi hardware and configuration.
 
-- `server/.env` je vraćen na tvoj postojeći token:
-  - `INFLUX_TOKEN=60an128...`
-- `docker-compose.yaml` koristi iste vrednosti kroz promenljive (`INFLUX_ORG`, `INFLUX_BUCKET`, `INFLUX_TOKEN`) i fallback na isti token.
-- Grafana datasource provisioning (`grafana/provisioning/datasources/influxdb.yaml`) koristi iste env promenljive (`${INFLUX_ORG}`, `${INFLUX_BUCKET}`, `${INFLUX_TOKEN}`).
+## Project Type
 
-Ako koristiš svoje stvarne kredencijale za Influx login:
-- username: `iot`
-- password: `iot-projekat`
-
-to je sada podrazumevano i za Influx bootstrap u compose fajlu (`INFLUX_INIT_USERNAME/INFLUX_INIT_PASSWORD`).
-
-> Važno: Influx bootstrap parametri važe samo pri prvom podizanju na praznim volume-ovima.
-
-## Za kolegu na drugom računaru
-
-Na čistom Docker okruženju (bez prethodnih volume-ova), kolega samo radi:
-
-```bash
-docker-compose up -d
-```
-
-i dobija:
-- inicijalizovan Influx (org/bucket/token)
-- Grafana datasource ka Influx-u
-- učitane dashboard-e iz `grafana/dashboards`
-
-Ako je stack ranije već podizan, potrebno je:
-
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-
-## Grafana dashboard-i i komponente po PI
-
-Sada postoje dashboard-i koji jasno označavaju **PI + komponentu** u naslovu panela.
-
-### Dashboard 1: `Smart House Overview`
-- opšti pregled (filter po `pi_id` i `code`)
-
-### Dashboard 2: `Smart House - Components by PI`
-- paneli po komponentama (npr. `PI2 / DHT3 - Temp/Humidity`, `PI3 / BRGB - RGB state`, ...)
-- svaki panel je precizno vezan za odgovarajući `pi_id` i `code`
-
-## Kako da vidiš PI2 i PI3 u Grafani
-
-1. Otvori Grafanu `http://localhost:3000`
-2. Otvori dashboard **Smart House - Components by PI**
-3. Proveri panele za PI2 i PI3 (naslov svakog panela sadrži PI i komponentu)
-
-Za ručni Flux upit (primer PI2/PI3):
-
-```flux
-from(bucket: "iot_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "sensor_readings")
-  |> filter(fn: (r) => r.pi_id == "PI2" or r.pi_id == "PI3")
-```
-
-## Brza provera MQTT-a
-
-```bash
-docker exec -it smart-house-iot-mosquitto-1 mosquitto_sub -t "smarthome/+/sensors/#" -v
-```
-
-```bash
-docker exec -it smart-house-iot-mosquitto-1 mosquitto_sub -t "smarthome/+/actuators/#" -v
-```
-
-## Web aplikacija
-
-Korisnički interfejs je dostupan na:
-
-- `http://localhost:5050/`
-
-Omogućeno:
-- uključivanje/isključivanje alarma i PIN deakivacija
-- podešavanje kuhinjskog tajmera i `BTN +N` vrednosti
-- upravljanje BRGB svetlom
-- prikaz trenutnog stanja svih komponenti (poslednji MQTT event po kodu)
-- opciono embed Grafana panela preko `GRAFANA_EMBED_URL`
-
-## Influx PI filtriranje (`PI_ID_FILTER`)
-
-`server/app.py` podržava filtriranje PI uređaja na nivou MQTT ingest-a.
-
-- `PI_ID_FILTER=` (prazno) -> upisuje sve PI uređaje (PI1/PI2/PI3)
-- `PI_ID_FILTER=PI1` -> upisuje samo PI1
-- `PI_ID_FILTER=PI1,PI3` -> upisuje PI1 i PI3
-
-Ako u Influx-u vidiš samo PI1 u tag vrednostima, proveri da filter nije zakucan na `PI1` i restartuj `server/app.py`.
-
-## WEBC na fizickom Raspberry Pi
-
-Za fizicki rad kamere na PI1:
-
-1. Omoguci kameru:
-```bash
-sudo raspi-config
-# Interface Options -> Camera -> Enable
-sudo reboot
-```
-
-2. Instaliraj backend(e) za kameru (jedan je dovoljan, preporuka picamera2):
-```bash
-sudo apt update
-sudo apt install -y python3-picamera2 libcamera-apps python3-opencv
-```
-
-3. U `pi1/src/settings.json` postavi:
-- `components.WEBC.simulated = false`
-- `storage_path = "/tmp/camera_captures/"`
-
-4. Pokreni `python pi1/src/main.py` i proveri da u logu za WEBC stizu frame-ovi sa `backend` poljem (`picamera2`, `opencv` ili `libcamera-still`).
+Team project developed as part of university coursework.
